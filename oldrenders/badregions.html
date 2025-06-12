@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Congestion Heatmap</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #000; 
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .congestion-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <div>Global Network Congestion Monitor</div>
+        <div id="status">Loading map...</div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 0, 120);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x000011);
+        document.body.appendChild(renderer.domElement);
+
+        // Mouse controls
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let rotationX = 0, rotationY = 0;
+
+        const mapGroup = new THREE.Group();
+        const congestionGroup = new THREE.Group();
+        scene.add(mapGroup);
+        scene.add(congestionGroup);
+
+        // Congestion colors
+        const congestionColors = {
+            "none": new THREE.Color(0x333333),     // Dark gray base map
+            "low": new THREE.Color(0xffff00),      // Yellow
+            "medium": new THREE.Color(0xff8800),   // Orange  
+            "high": new THREE.Color(0xff0000),     // Red
+        };
+
+        let time = 0;
+        let congestionHotspots = [];
+
+        // Mouse event handlers
+        document.addEventListener('mousedown', onMouseDown, false);
+        document.addEventListener('mousemove', onMouseMove, false);
+        document.addEventListener('mouseup', onMouseUp, false);
+        document.addEventListener('wheel', onWheel, false);
+
+        function onMouseDown(event) {
+            mouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!mouseDown) return;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+            targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
+            
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp(event) {
+            mouseDown = false;
+        }
+
+        function onWheel(event) {
+            camera.position.z += event.deltaY * 0.1;
+            camera.position.z = Math.max(50, Math.min(300, camera.position.z));
+        }
+
+        // Load world map data
+        async function loadWorldMap() {
+            try {
+                const response = await fetch('world.json');
+                const topology = await response.json();
+                const countries = topojson.feature(topology, topology.objects.land);
+                
+                drawBaseMap(countries);
+                createCongestionGrid();
+                updateStatus('Network monitoring active');
+                
+                startCongestionSimulation();
+            } catch (error) {
+                console.error('Error loading map:', error);
+                updateStatus('Error loading map data');
+            }
+        }
+
+        function drawBaseMap(geojson) {
+            geojson.features.forEach((feature, index) => {
+                if (feature.geometry.type === 'Polygon') {
+                    createBaseMesh(feature.geometry.coordinates, index);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    feature.geometry.coordinates.forEach((polygon, polyIndex) => {
+                        createBaseMesh(polygon, index * 1000 + polyIndex);
+                    });
+                }
+            });
+        }
+
+        function createBaseMesh(coordinates, id) {
+            coordinates.forEach(ring => {
+                if (ring.length < 3) return;
+                
+                const validCoords = ring.filter(coord => {
+                    const [lng, lat] = coord;
+                    return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+                });
+                
+                if (validCoords.length < 3) return;
+                
+                const polygonGroups = splitAntimeridianPolygon(validCoords);
+                
+                polygonGroups.forEach(coordGroup => {
+                    if (coordGroup.length < 3) return;
+                    
+                    const shape = new THREE.Shape();
+                    coordGroup.forEach((coord, index) => {
+                        const [lng, lat] = coord;
+                        if (index === 0) {
+                            shape.moveTo(lng, lat);
+                        } else {
+                            shape.lineTo(lng, lat);
+                        }
+                    });
+                    
+                    try {
+                        const geometry = new THREE.ShapeGeometry(shape);
+                        const material = new THREE.MeshBasicMaterial({ 
+                            color: 0x333333,
+                            transparent: true,
+                            opacity: 0.3,
+                            side: THREE.DoubleSide
+                        });
+                        
+                        const mesh = new THREE.Mesh(geometry, material);
+                        mapGroup.add(mesh);
+                    } catch (error) {
+                        console.warn('Skipping invalid geometry:', error);
+                    }
+                });
+            });
+        }
+
+        function splitAntimeridianPolygon(coordinates) {
+            const groups = [];
+            let currentGroup = [];
+            
+            for (let i = 0; i < coordinates.length; i++) {
+                const [lng, lat] = coordinates[i];
+                const prevCoord = i > 0 ? coordinates[i - 1] : null;
+                
+                if (prevCoord) {
+                    const [prevLng] = prevCoord;
+                    if (Math.abs(lng - prevLng) > 180) {
+                        if (currentGroup.length > 2) {
+                            groups.push([...currentGroup]);
+                        }
+                        currentGroup = [[lng, lat]];
+                        continue;
+                    }
+                }
+                currentGroup.push([lng, lat]);
+            }
+            
+            if (currentGroup.length > 2) {
+                groups.push(currentGroup);
+            }
+            
+            return groups.length > 0 ? groups : [coordinates];
+        }
+
+        function createCongestionGrid() {
+            // Create network congestion hotspots at random locations
+            const numHotspots = 50;
+            
+            for (let i = 0; i < numHotspots; i++) {
+                // Random positions across the world
+                const lng = (Math.random() - 0.5) * 360;
+                const lat = (Math.random() - 0.5) * 180;
+                
+                // Create circular hotspot
+                const radius = 5 + Math.random() * 15; // Variable sizes
+                const geometry = new THREE.CircleGeometry(radius, 16);
+                const material = new THREE.MeshBasicMaterial({
+                    color: congestionColors.low,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                const hotspot = new THREE.Mesh(geometry, material);
+                hotspot.position.set(lng, lat, 0.1); // Slightly above base map
+                
+                hotspot.userData = {
+                    originalPos: { x: lng, y: lat },
+                    currentLevel: 'low',
+                    targetLevel: 'low',
+                    lastUpdate: Date.now(),
+                    radius: radius
+                };
+                
+                congestionGroup.add(hotspot);
+                congestionHotspots.push(hotspot);
+            }
+        }
+
+        function startCongestionSimulation() {
+            // Update congestion hotspots every 1-3 seconds
+            setInterval(() => {
+                updateCongestionHotspots();
+            }, 1000 + Math.random() * 2000);
+        }
+
+        function updateCongestionHotspots() {
+            // Update 20-30% of hotspots each time
+            const numToUpdate = Math.floor(congestionHotspots.length * (0.2 + Math.random() * 0.1));
+            const shuffled = [...congestionHotspots].sort(() => 0.5 - Math.random());
+            
+            for (let i = 0; i < numToUpdate; i++) {
+                const hotspot = shuffled[i];
+                const current = hotspot.userData.currentLevel;
+                let newLevel;
+                
+                // Realistic congestion transitions
+                const rand = Math.random();
+                if (current === 'low') {
+                    newLevel = rand > 0.7 ? 'medium' : 'low';
+                } else if (current === 'medium') {
+                    if (rand < 0.3) newLevel = 'high';
+                    else if (rand < 0.6) newLevel = 'low';
+                    else newLevel = 'medium';
+                } else if (current === 'high') {
+                    newLevel = rand > 0.6 ? 'medium' : 'high';
+                }
+                
+                hotspot.userData.targetLevel = newLevel;
+                hotspot.userData.lastUpdate = Date.now();
+            }
+            
+            updateStatus(`Updated ${numToUpdate} network regions`);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = message;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            time += 0.02;
+            
+            // Smooth rotation
+            rotationX += (targetRotationX - rotationX) * 0.05;
+            rotationY += (targetRotationY - rotationY) * 0.05;
+            mapGroup.rotation.x = rotationX;
+            mapGroup.rotation.y = rotationY;
+            congestionGroup.rotation.x = rotationX;
+            congestionGroup.rotation.y = rotationY;
+            
+            // Update congestion hotspots
+            congestionHotspots.forEach((hotspot, index) => {
+                const userData = hotspot.userData;
+                const targetColor = congestionColors[userData.targetLevel];
+                
+                // Smooth color transition
+                hotspot.material.color.lerp(targetColor, 0.03);
+                
+                // Subtle breathing effect based on congestion level
+                const phase = (index * 0.2) % (Math.PI * 2);
+                let breathingIntensity = 0.1;
+                
+                if (userData.targetLevel === 'medium') breathingIntensity = 0.15;
+                else if (userData.targetLevel === 'high') breathingIntensity = 0.25;
+                
+                const breathing = 1 + breathingIntensity * Math.sin(time * 2 + phase);
+                hotspot.scale.setScalar(breathing);
+                
+                // Update opacity based on activity
+                const baseOpacity = userData.targetLevel === 'low' ? 0.4 : 0.7;
+                hotspot.material.opacity = baseOpacity + 0.2 * Math.sin(time * 1.5 + phase);
+            });
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize
+        loadWorldMap();
+        animate();
+    </script>
+</body>
+</html>
