@@ -164,28 +164,34 @@
         // Possible congestion causes with dynamic ranges
         const congestionCauses = {
             'critical': [
-                { name: 'Bandwidth Saturation', min: 75, max: 95 },
-                { name: 'DDoS Attack Detected', min: 60, max: 85 },
-                { name: 'Hardware Failure', min: 40, max: 70 },
-                { name: 'Routing Loops', min: 30, max: 60 },
-                { name: 'DNS Resolution Issues', min: 25, max: 50 },
-                { name: 'ISP Peering Problems', min: 20, max: 45 }
+                { name: 'Faulty Hardware or Cables', min: 75, max: 95 },
+                { name: 'Traffic Overload', min: 60, max: 85 },
+                { name: 'Oversubscription', min: 40, max: 70 },
+                { name: 'Buffer Bloat', min: 30, max: 60 },
+                { name: 'Inadequate QoS (Quality of Service)', min: 25, max: 50 },
+                { name: 'Misconfigured Load Balancers or Routing', min: 20, max: 45 },
+                { name: 'Slow-Receiver or End Device', min: 15, max: 40 },
+                { name: 'Microbursts', min: 10, max: 35 }
             ],
             'high': [
-                { name: 'High Traffic Volume', min: 50, max: 75 },
-                { name: 'Link Degradation', min: 35, max: 65 },
-                { name: 'BGP Instability', min: 30, max: 55 },
-                { name: 'Server Overload', min: 25, max: 50 },
-                { name: 'Network Congestion', min: 20, max: 45 },
-                { name: 'QoS Policy Issues', min: 15, max: 35 }
+                { name: 'Traffic Overload', min: 50, max: 75 },
+                { name: 'Buffer Bloat', min: 35, max: 65 },
+                { name: 'Oversubscription', min: 30, max: 55 },
+                { name: 'Slow-Receiver or End Device', min: 25, max: 50 },
+                { name: 'Inadequate QoS (Quality of Service)', min: 20, max: 45 },
+                { name: 'Misconfigured Load Balancers or Routing', min: 15, max: 35 },
+                { name: 'Faulty Hardware or Cables', min: 10, max: 30 },
+                { name: 'Microbursts', min: 8, max: 25 }
             ],
             'medium': [
-                { name: 'Peak Hour Traffic', min: 30, max: 50 },
-                { name: 'Routing Inefficiency', min: 20, max: 40 },
-                { name: 'Protocol Overhead', min: 15, max: 35 },
-                { name: 'Cache Miss Rate', min: 10, max: 30 },
-                { name: 'Latency Spikes', min: 8, max: 25 },
-                { name: 'Packet Loss', min: 5, max: 20 }
+                { name: 'Traffic Overload', min: 30, max: 50 },
+                { name: 'Buffer Bloat', min: 20, max: 40 },
+                { name: 'Slow-Receiver or End Device', min: 15, max: 35 },
+                { name: 'Inadequate QoS (Quality of Service)', min: 10, max: 30 },
+                { name: 'Microbursts', min: 8, max: 25 },
+                { name: 'Oversubscription', min: 5, max: 20 },
+                { name: 'Misconfigured Load Balancers or Routing', min: 5, max: 18 },
+                { name: 'Faulty Hardware or Cables', min: 3, max: 15 }
             ]
         };
 
@@ -613,7 +619,7 @@
             mapGroup.rotation.y = rotationY;
             
             // Global breathing effect
-            const globalPulse = 0.6 + 0.4 * Math.sin(time * 2);
+            const globalPulse = 0.6 + 0.4 * Math.sin(time * 0.3);
             currentColor.lerp(targetColor, 0.02);
             
             // Update country colors with breathing effect
@@ -621,7 +627,7 @@
                 if (mesh.userData.hasDevices) {
                     // Regions with devices - apply breathing effect
                     const phase = (index * 0.1) % (Math.PI * 2);
-                    const localPulse = 0.5 + 0.5 * Math.sin(time * 1.5 + phase);
+                    const localPulse = 0.5 + 0.5 * Math.sin(time * 0.1 + phase);
                     
                     // Smooth color transitions
                     mesh.userData.currentColor.lerp(mesh.userData.targetColor, 0.03);
