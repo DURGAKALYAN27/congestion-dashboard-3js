@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>world heatmap with radar</title>
+    <title>World Network Monitor</title>
+    <!-- Chart.js for Level 3 Dashboard -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <style>
         body { 
             margin: 0; 
@@ -10,7 +12,10 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
         }
-        canvas { display: block; }
+        canvas { 
+            display: block; 
+            transition: filter 0.5s ease;
+        }
         #info {
             position: absolute;
             top: 10px;
@@ -20,6 +25,7 @@
             padding: 10px;
             border-radius: 5px;
             font-size: 14px;
+            z-index: 10;
         }
         .congestion-indicator {
             display: inline-block;
@@ -45,8 +51,6 @@
             box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
         }
         
-
-        
         .radar-header {
             color: #ffffff;
             font-weight: bold;
@@ -56,214 +60,339 @@
             padding-bottom: 5px;
         }
         
-        .radar-section {
-            margin-bottom: 8px;
-        }
-        
-        .radar-title {
-            color: #ffff00;
-            font-weight: bold;
-            margin-bottom: 3px;
-        }
-        
-        .cause-item {
-            display: flex;
-            justify-content: space-between;
-            margin: 2px 0;
-            padding: 2px 0;
-        }
-        
-        .cause-name {
-            color: #ffffff;
-        }
-        
-        .cause-percentage {
-            color: #ff6666;
-            font-weight: bold;
-        }
-        
+        .radar-section { margin-bottom: 8px; }
+        .radar-title { color: #ffff00; font-weight: bold; margin-bottom: 3px; }
+        .cause-item { display: flex; justify-content: space-between; margin: 2px 0; padding: 2px 0; }
+        .cause-name { color: #ffffff; }
+        .cause-percentage { color: #ff6666; font-weight: bold; }
         .severity-critical { color: #ff3333; }
         .severity-high { color: #ff8800; }
         .severity-medium { color: #ffff00; }
-        
-        .radar-pulse {
-            animation: pulse 2s infinite;
+        .radar-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+        .scanning-line { color: #00ff00; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
+
+        /* --- Level 3 Datacenter View (DARK THEME) --- */
+        #level3Overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0d1117; z-index: 2000; color: #c9d1d9;
+            display: none; flex-direction: column; font-family: 'Courier New', monospace;
         }
-        
-        @keyframes pulse {
-            0% { opacity: 0.8; }
-            50% { opacity: 1; }
-            100% { opacity: 0.8; }
+        .l3-main-header {
+            background: #161b22; padding: 10px 20px; border-bottom: 1px solid #30363d; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
         }
+        .l3-tabs { display: flex; gap: 10px;}
+        .l3-tab { padding: 8px 15px; border-bottom: 3px solid transparent; cursor: pointer; color: #8b949e; }
+        .l3-tab.active { border-bottom-color: #f78166; color: #f0f6fc; font-weight: 600; }
+        .l3-close-btn { background: #c9302c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .l3-close-btn:hover { background: #d9534f; }
+        .l3-content-wrapper { flex-grow: 1; display: flex; padding: 15px; gap: 15px; overflow: hidden; }
+        .l3-main-panel { flex-grow: 1; display: flex; flex-direction: column; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
+        .l3-main-panel-header { padding: 10px 15px; border-bottom: 1px solid #30363d; font-weight: 600; color: #f0f6fc; }
+        .l3-network-map { flex-grow: 1; position: relative; background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(0,100,100,0.2)" stroke-width="0.5"/></pattern><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="url(%23smallGrid)"/><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(0,100,100,0.4)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)" /></svg>');}
         
-        .scanning-line {
-            color: #00ff00;
-            animation: blink 1s infinite;
+        .l3-right-panel {
+            flex-basis: 280px; flex-shrink: 0; background: #161b22; border: 1px solid #30363d;
+            border-radius: 6px; padding: 15px; font-size: 14px; color: #c9d1d9;
         }
+        .l3-right-panel h3 { margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #30363d; padding-bottom: 10px; color: #f0f6fc; font-weight: 600;}
+        .l3-insight-item { margin-bottom: 25px; }
+        .l3-insight-title { color: #00ffff; font-size: 16px; margin: 0 0 8px 0; font-weight: bold; }
+        .l3-insight-text { line-height: 1.5; font-size: 14px; }
         
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
-        }
+        .l3-node { position: absolute; display: flex; flex-direction: column; align-items: center; text-align: center; color: #f0f6fc; }
+        .l3-node-kpis { position: absolute; top: 0; left: 105%; white-space: nowrap; font-size: 11px; color: #f0f6fc; background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 3px; border: 1px solid #30363d;}
+        .l3-node-kpis.status-error { color: #ff8080; font-weight: bold; }
+        .l3-node-core { position: relative; display: flex; align-items: center; justify-content: center; }
+        .l3-node-icon-wrapper { width: 50px; height: 50px; border-radius: 50%; border: 4px solid; display: flex; align-items: center; justify-content: center; background: #0d1117; }
+        .l3-node-icon-wrapper.status-ok { border-color: #3fb950; }
+        .l3-node-icon-wrapper.status-error { border-color: #f85149; }
+        .l3-node-icon-text { font-weight: bold; font-size: 12px; }
+        .l3-node-icon-text span { font-size: 10px; display: block; font-weight: normal; }
+        .l3-node-tag { position: absolute; bottom: -5px; right: -10px; background: #238636; color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; border: 1px solid #30363d; }
+        .l3-node-label { margin-top: 5px; font-size: 12px; font-weight: 500; }
+
+        .l3-node-lb .l3-node-icon-wrapper { border-radius: 8px; width: 45px; height: 45px; border-color: #388bfd; background: rgba(56, 139, 253, 0.1); }
+        .l3-node-lb .l3-node-icon-svg { stroke: #58a6ff; stroke-width: 2; }
+        .l3-node-db .l3-node-icon-wrapper { border-radius: 0; border: none; background: transparent; }
+        .l3-node-db .l3-node-icon-svg { fill: #8b949e; width: 40px; height: 40px; }
+        
+        .l3-connection-line { stroke-width: 2px; fill: none; }
+        .l3-connection-line.status-ok { stroke: #3fb950; marker-end: url(#arrowhead-ok); }
+        .l3-connection-line.status-error { stroke: #f85149; marker-end: url(#arrowhead-error); }
+        .l3-connection-metric { font-size: 11px; fill: #8b949e; text-shadow: 0 0 5px #000; }
+        .l3-connection-metric.status-error { fill: #ff8080; font-weight: bold; }
+
+        .l3-charts-container { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 0 15px 15px 15px; height: 160px; }
+        .l3-chart-wrapper { background: #161b22; padding: 10px; border: 1px solid #30363d; border-radius: 6px; }
     </style>
 </head>
 <body>
     <div id="info">
         <div>World Network Congestion Monitor</div>
-        <div id="status">Loading...</div>
+        <div id="status">Loading... (Double-click to reset view)</div>
     </div>
     
     <div id="radarWindow">
         <div class="radar-header radar-pulse">🔍 NETWORK RADAR ANALYSIS</div>
         <div id="radarContent"></div>
     </div>
+
+    <!-- Level 3 Datacenter View Overlay -->
+    <div id="level3Overlay">
+        <header class="l3-main-header">
+            <div class="l3-tabs">
+                <div class="l3-tab">Dashboard</div>
+                <div class="l3-tab active">Network Dashboard</div>
+                <div class="l3-tab">Events</div>
+                <div class="l3-tab">Top Business Transactions</div>
+            </div>
+            <button id="l3-close-btn" class="l3-close-btn">Return to Map</button>
+        </header>
+        <div class="l3-content-wrapper">
+            <div class="l3-main-panel">
+                <div class="l3-main-panel-header">
+                    <span id="l3-title">Network Flow Map</span>
+                </div>
+                <div class="l3-network-map">
+                    <svg width="100%" height="100%" id="l3-svg-container" style="position: absolute; top: 0; left: 0;">
+                        <defs>
+                            <marker id="arrowhead-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950" /></marker>
+                            <marker id="arrowhead-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149" /></marker>
+                        </defs>
+                    </svg>
+                    <div id="l3-nodes-container" style="position: relative; width: 100%; height: 100%;"></div>
+                </div>
+            </div>
+            <aside class="l3-right-panel">
+                <h3>ML-Driven Insights</h3>
+                <div id="l3-ml-insights-content"></div>
+            </aside>
+        </div>
+        <div class="l3-charts-container">
+            <div class="l3-chart-wrapper"><canvas id="l3-chart-throughput"></canvas></div>
+            <div class="l3-chart-wrapper"><canvas id="l3-chart-tcploss"></canvas></div>
+            <div class="l3-chart-wrapper"><canvas id="l3-chart-pie"></canvas></div>
+            <div class="l3-chart-wrapper"><canvas id="l3-chart-errors"></canvas></div>
+        </div>
+    </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
     
     <script>
+        // --- THREE.JS Setup and Global Variables ---
         const scene = new THREE.Scene();
+        const initialCameraPosition = new THREE.Vector3(0, 0, 120);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 0, 120);
+        camera.position.copy(initialCameraPosition);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setClearColor(0x000011);
         document.body.appendChild(renderer.domElement);
 
-        // Raycaster for mouse interactions
-        const raycaster = new THREE.Raycaster();
-        const mouse = new THREE.Vector2();
-
-        // Simple orbit controls implementation
+        // --- State and Controls ---
         let mouseDown = false;
         let mouseX = 0, mouseY = 0;
         let targetRotationX = 0, targetRotationY = 0;
         let rotationX = 0, rotationY = 0;
+        let currentLevel = 1; // 1: Global, 2: India Zoom, 3: Datacenter View
+        let targetCameraPosition = new THREE.Vector3().copy(initialCameraPosition);
+        let currentLookAt = new THREE.Vector3(0, 0, 0);
+        let targetLookAt = new THREE.Vector3(0, 0, 0);
+        let activeCharts = []; // To hold Chart.js instances
+        let animationState = 'idle'; // 'idle', 'centering', 'zooming'
+        let zoomTargetMesh = null;
 
+
+        // --- Groups for objects ---
         const mapGroup = new THREE.Group();
+        const globalConnectionsGroup = new THREE.Group();
+        const indiaConnectionsGroup = new THREE.Group();
+        mapGroup.add(globalConnectionsGroup);
+        mapGroup.add(indiaConnectionsGroup);
         scene.add(mapGroup);
+        indiaConnectionsGroup.visible = false;
 
-        const connectionLines = []; // Track connection lines
-        const activeLevels = ['medium', 'high', 'critical'];
+        // --- Raycasting ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
 
-        function getRandomActiveColor() {
-            const randomLevel = activeLevels[Math.floor(Math.random() * activeLevels.length)];
-            return congestionColors[randomLevel].clone();
-        }
-
-        // Congestion levels and colors
+        // --- Data & Configuration ---
         const congestionLevels = ['low', 'medium', 'high', 'critical'];
+        const activeLevels = ['medium', 'high', 'critical'];
         const congestionColors = {
-            "low": new THREE.Color(0x888888),      // Gray
-            "medium": new THREE.Color(0xffff00),   // Yellow  
-            "high": new THREE.Color(0xff8800),     // Orange
-            "critical": new THREE.Color(0xff0000), // Red
-            "unknown": new THREE.Color(0x444444)   // Dark Grey
+            "low": new THREE.Color(0x888888),
+            "medium": new THREE.Color(0xffff00),
+            "high": new THREE.Color(0xff8800),
+            "critical": new THREE.Color(0xff0000),
+            "unknown": new THREE.Color(0x444444)
         };
-
-        let currentCongestionLevel = 'low';
-        let targetColor = congestionColors[currentCongestionLevel];
-        let currentColor = new THREE.Color().copy(targetColor);
+        let targetColor = congestionColors['low'];
         let time = 0;
         let countryMeshes = [];
         let hoveredMesh = null;
 
-        // Possible congestion causes with dynamic ranges
         const congestionCauses = {
-            'critical': [
-                { name: 'Faulty Hardware or Cables', min: 75, max: 95 },
-                { name: 'Traffic Overload', min: 60, max: 85 },
-                { name: 'Oversubscription', min: 40, max: 70 },
-                { name: 'Buffer Bloat', min: 30, max: 60 },
-                { name: 'Inadequate QoS (Quality of Service)', min: 25, max: 50 },
-                { name: 'Misconfigured Load Balancers or Routing', min: 20, max: 45 },
-                { name: 'Slow-Receiver or End Device', min: 15, max: 40 },
-                { name: 'Microbursts', min: 10, max: 35 }
-            ],
-            'high': [
-                { name: 'Traffic Overload', min: 50, max: 75 },
-                { name: 'Buffer Bloat', min: 35, max: 65 },
-                { name: 'Oversubscription', min: 30, max: 55 },
-                { name: 'Slow-Receiver or End Device', min: 25, max: 50 },
-                { name: 'Inadequate QoS (Quality of Service)', min: 20, max: 45 },
-                { name: 'Misconfigured Load Balancers or Routing', min: 15, max: 35 },
-                { name: 'Faulty Hardware or Cables', min: 10, max: 30 },
-                { name: 'Microbursts', min: 8, max: 25 }
-            ],
-            'medium': [
-                { name: 'Traffic Overload', min: 30, max: 50 },
-                { name: 'Buffer Bloat', min: 20, max: 40 },
-                { name: 'Slow-Receiver or End Device', min: 15, max: 35 },
-                { name: 'Inadequate QoS (Quality of Service)', min: 10, max: 30 },
-                { name: 'Microbursts', min: 8, max: 25 },
-                { name: 'Oversubscription', min: 5, max: 20 },
-                { name: 'Misconfigured Load Balancers or Routing', min: 5, max: 18 },
-                { name: 'Faulty Hardware or Cables', min: 3, max: 15 }
-            ]
+            'critical': [ { name: 'Faulty Hardware or Cables', min: 75, max: 95 }, { name: 'Traffic Overload', min: 60, max: 85 }, { name: 'Oversubscription', min: 40, max: 70 }, { name: 'Buffer Bloat', min: 30, max: 60 }, { name: 'Inadequate QoS (Quality of Service)', min: 25, max: 50 }, { name: 'Misconfigured Load Balancers or Routing', min: 20, max: 45 }, { name: 'Slow-Receiver or End Device', min: 15, max: 40 }, { name: 'Microbursts', min: 10, max: 35 } ],
+            'high': [ { name: 'Traffic Overload', min: 50, max: 75 }, { name: 'Buffer Bloat', min: 35, max: 65 }, { name: 'Oversubscription', min: 30, max: 55 }, { name: 'Slow-Receiver or End Device', min: 25, max: 50 }, { name: 'Inadequate QoS (Quality of Service)', min: 20, max: 45 }, { name: 'Misconfigured Load Balancers or Routing', min: 15, max: 35 }, { name: 'Faulty Hardware or Cables', min: 10, max: 30 }, { name: 'Microbursts', min: 8, max: 25 } ],
+            'medium': [ { name: 'Traffic Overload', min: 30, max: 50 }, { name: 'Buffer Bloat', min: 20, max: 40 }, { name: 'Slow-Receiver or End Device', min: 15, max: 35 }, { name: 'Inadequate QoS (Quality of Service)', min: 10, max: 30 }, { name: 'Microbursts', min: 8, max: 25 }, { name: 'Oversubscription', min: 5, max: 20 }, { name: 'Misconfigured Load Balancers or Routing', min: 5, max: 18 }, { name: 'Faulty Hardware or Cables', min: 3, max: 15 } ]
         };
+        const locationNames = [ 'Data Center Alpha', 'Regional Hub Beta', 'Metro Node Gamma', 'Edge Router Delta', 'Core Switch Epsilon', 'Access Point Zeta', 'Gateway Eta', 'Relay Station Theta', 'Network Cluster Iota', 'Backbone Node Kappa', 'Distribution Point Lambda', 'Service Node Mu' ];
+        
+        const datacenterDetails = {
+            'Pune': {
+                nodes: [
+                    { id: 'payment', type: 'tier', label: 'Payment-Tier', icon: '1', tag: 'Java', status: 'ok', pos: { x: '15%', y: '75%' } },
+                    { id: 'order', type: 'tier', label: 'Order-Tier', icon: '2', tag: 'Java', status: 'ok', kpis: '0.685ms<br>0 PIE, 0 Errors', pos: { x: '15%', y: '25%' } },
+                    { id: 'lb1', type: 'loadbalancer', label: '10.0.11.75:8080', status: 'ok', pos: { x: '40%', y: '50%' } },
+                    { id: 'ecom1', type: 'tier', label: 'Ecom-Tier1', icon: '2', tag: 'Java', status: 'ok', kpis: '3.356ms<br>5 PIE, 0 Errors', pos: { x: '65%', y: '25%' } },
+                    { id: 'inventory', type: 'tier', label: 'Inventory-Tier', icon: '4', tag: 'Java', status: 'error', kpis: '0.54ms<br>38 PIE, 5 Errors', pos: { x: '65%', y: '75%' } },
+                    { id: 'db', type: 'database', label: '2 JDBC backends', status: 'ok', pos: { x: '90%', y: '75%' } },
+                ],
+                connections: [
+                    { from: 'payment', to: 'lb1', status: 'ok', metric: '0.92 ms, 0 PIE, 0 Errors' },
+                    { from: 'order', to: 'lb1', status: 'error', metric: '0.685 ms, 0 PIE, 0 Errors' },
+                    { from: 'lb1', to: 'ecom1', status: 'ok', metric: '0.92 ms, 0 PIE, 4 Errors' },
+                    { from: 'lb1', to: 'inventory', status: 'ok', metric: '9.328 ms, 0 PIE, 0 Errors' },
+                    { from: 'ecom1', to: 'inventory', status: 'ok', metric: '7.995 ms, 1 PIE, 0 Errors' },
+                    { from: 'inventory', to: 'db', status: 'error', metric: '0.751 ms, 38 PIE, 5 Errors' },
+                ],
+                mlInsights: [
+                    { title: 'Anomaly Detection', text: 'Severity-3 Anomaly detected in Inventory-Tier (High Latency). System investigating.' },
+                    { title: 'Predictive Analysis', text: 'Traffic spike predicted in 2 hours due to promotional event. Ecom-Tier1 scaling recommended.' },
+                    { title: 'Optimization Note', text: 'The connection from Order-Tier to the load balancer is showing unusual error patterns despite low latency.' }
+                ]
+            },
+        };
+        ['Delhi', 'Mumbai', 'Chennai', 'Kolkata', 'Bangalore'].forEach(city => {
+            datacenterDetails[city] = { ...datacenterDetails['Pune'], 
+                mlInsights: [
+                    { title: 'Anomaly Detection', text: 'No critical anomalies detected. System stable.' },
+                    { title: 'Predictive Analysis', text: 'Normal traffic patterns expected for the next 6 hours.' },
+                    { title: 'Optimization Note', text: `All services in ${city} have capacity for a 2x traffic increase.` }
+                ]
+            };
+        });
 
-        // Generate location names
-        const locationNames = [
-            'Data Center Alpha', 'Regional Hub Beta', 'Metro Node Gamma', 'Edge Router Delta',
-            'Core Switch Epsilon', 'Access Point Zeta', 'Gateway Eta', 'Relay Station Theta',
-            'Network Cluster Iota', 'Backbone Node Kappa', 'Distribution Point Lambda', 'Service Node Mu'
-        ];
-
-        // Mouse controls
+        // --- Event Listeners Setup ---
         document.addEventListener('mousedown', onMouseDown, false);
         document.addEventListener('mousemove', onMouseMove, false);
         document.addEventListener('mouseup', onMouseUp, false);
         document.addEventListener('wheel', onWheel, false);
+        document.addEventListener('dblclick', resetView, false);
+        document.getElementById('l3-close-btn').addEventListener('click', hideLevel3View);
 
+        // --- Core Event Handlers ---
         function onMouseDown(event) {
+            if (currentLevel === 3) return;
             mouseDown = true;
             mouseX = event.clientX;
             mouseY = event.clientY;
         }
 
         function onMouseMove(event) {
-            // Update mouse position for raycasting
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             
             if (!mouseDown) {
-                checkHover(event);
+                if (currentLevel === 1) checkHover(event);
                 return;
             }
-            
+            if (currentLevel !== 1 || animationState !== 'idle') return;
+
             const deltaX = event.clientX - mouseX;
             const deltaY = event.clientY - mouseY;
-            
             targetRotationY += deltaX * 0.01;
             targetRotationX += deltaY * 0.01;
-            
             targetRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, targetRotationX));
-            
             mouseX = event.clientX;
             mouseY = event.clientY;
         }
 
         function onMouseUp(event) {
+            if (!mouseDown || currentLevel === 3) return;
             mouseDown = false;
+            
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+            const dragDistance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
+
+            if (dragDistance < 5) handleClick();
+        }
+        
+        function handleClick() {
+            if (animationState !== 'idle') return;
+            raycaster.setFromCamera(mouse, camera);
+
+            if (currentLevel === 1) {
+                const intersects = raycaster.intersectObjects(countryMeshes);
+                if (intersects.length > 0) {
+                    const clickedMesh = intersects[0].object;
+                    if (clickedMesh.userData.name === 'India') {
+                        zoomToCountry(clickedMesh);
+                    }
+                }
+            } else if (currentLevel === 2) {
+                const nodeIntersects = raycaster.intersectObjects(indiaConnectionsGroup.children);
+                const countryIntersects = raycaster.intersectObjects(countryMeshes);
+                
+                const clickedNode = nodeIntersects.find(i => i.object.userData.isNode);
+                if (clickedNode) {
+                    showLevel3View(clickedNode.object.userData.name);
+                } else if (countryIntersects.length === 0) {
+                     resetView();
+                }
+            }
+        }
+
+        function zoomToCountry(countryMesh) {
+            if (currentLevel !== 1 || animationState !== 'idle') return;
+            
+            hideRadarWindow();
+            animationState = 'centering';
+            zoomTargetMesh = countryMesh;
+
+            targetRotationX = 0;
+            targetRotationY = 0;
+        }
+
+        function resetView() {
+            if (currentLevel === 1 && camera.position.equals(initialCameraPosition)) return;
+            hideLevel3View();
+            currentLevel = 1;
+
+            targetCameraPosition.copy(initialCameraPosition);
+            targetLookAt.set(0, 0, 0);
+
+            globalConnectionsGroup.visible = true;
+            indiaConnectionsGroup.visible = false;
+            
+            animationState = 'idle';
+            zoomTargetMesh = null;
+
+            updateStatus('Global View. Monitoring all networks.');
         }
 
         function onWheel(event) {
+            if (currentLevel !== 1) return;
             camera.position.z += event.deltaY * 0.1;
             camera.position.z = Math.max(50, Math.min(300, camera.position.z));
+            targetCameraPosition.z = camera.position.z;
         }
-
+        
+        // --- Radar Window Functions ---
         function checkHover(event) {
+            if (animationState !== 'idle') return;
             raycaster.setFromCamera(mouse, camera);
             const intersects = raycaster.intersectObjects(countryMeshes);
             
             if (intersects.length > 0) {
                 const mesh = intersects[0].object;
                 
-                // Only show radar for congested areas (high or critical)
-                if (mesh.userData.hasDevices && 
-                    (mesh.userData.congestionLevel === 'high' || mesh.userData.congestionLevel === 'critical')) {
-                    
+                if (mesh.userData.hasDevices && (mesh.userData.congestionLevel === 'high' || mesh.userData.congestionLevel === 'critical')) {
                     if (hoveredMesh !== mesh) {
                         hoveredMesh = mesh;
                         showRadarWindow(event.clientX, event.clientY, mesh);
@@ -281,58 +410,18 @@
         function showRadarWindow(x, y, mesh) {
             const radarWindow = document.getElementById('radarWindow');
             const radarContent = document.getElementById('radarContent');
-            
-            // Generate analysis data
             const level = mesh.userData.congestionLevel;
-            const causes = congestionCauses[level] || congestionCauses['medium'];
+            const causes = congestionCauses[level] || [];
             const locationName = locationNames[Math.floor(Math.random() * locationNames.length)];
-            
-            // Generate random percentages for causes
-            const analysisData = causes.slice(0, 4 + Math.floor(Math.random() * 2)) // 4-5 causes
-                .map(cause => ({
-                    name: cause.name,
-                    percentage: Math.floor(Math.random() * (cause.max - cause.min) + cause.min)
-                }))
-                .sort((a, b) => b.percentage - a.percentage);
-            
+            const analysisData = causes.slice(0, 4 + Math.floor(Math.random() * 2)).map(cause => ({ name: cause.name, percentage: Math.floor(Math.random() * (cause.max - cause.min) + cause.min) })).sort((a, b) => b.percentage - a.percentage);
             const severityClass = `severity-${level}`;
             const timestamp = new Date().toLocaleTimeString();
             
             radarContent.innerHTML = `
-                <div class="radar-section">
-                    <div class="radar-title">📍 LOCATION</div>
-                    <div class="cause-item">
-                        <span class="cause-name">${locationName}</span>
-                        <span class="scanning-line">● SCANNING</span>
-                    </div>
-                </div>
-                
-                <div class="radar-section">
-                    <div class="radar-title">⚠️ SEVERITY</div>
-                    <div class="cause-item">
-                        <span class="cause-name">Congestion Level</span>
-                        <span class="cause-percentage ${severityClass}">${level.toUpperCase()}</span>
-                    </div>
-                </div>
-                
-                <div class="radar-section">
-                    <div class="radar-title">🔍 ROOT CAUSE ANALYSIS</div>
-                    ${analysisData.map(item => `
-                        <div class="cause-item">
-                            <span class="cause-name">${item.name}</span>
-                            <span class="cause-percentage">${item.percentage}%</span>
-                        </div>
-                    `).join('')}
-                </div>
-                
-                <div class="radar-section">
-                    <div class="radar-title">⏱️ LAST SCAN</div>
-                    <div class="cause-item">
-                        <span class="cause-name">Timestamp</span>
-                        <span class="cause-percentage">${timestamp}</span>
-                    </div>
-                </div>
-            `;
+                <div class="radar-section"><div class="radar-title">📍 LOCATION</div><div class="cause-item"><span class="cause-name">${locationName}</span><span class="scanning-line">● SCANNING</span></div></div>
+                <div class="radar-section"><div class="radar-title">⚠️ SEVERITY</div><div class="cause-item"><span class="cause-name">Congestion Level</span><span class="cause-percentage ${severityClass}">${level.toUpperCase()}</span></div></div>
+                <div class="radar-section"><div class="radar-title">🔍 ROOT CAUSE ANALYSIS</div>${analysisData.map(item => `<div class="cause-item"><span class="cause-name">${item.name}</span><span class="cause-percentage">${item.percentage}%</span></div>`).join('')}</div>
+                <div class="radar-section"><div class="radar-title">⏱️ LAST SCAN</div><div class="cause-item"><span class="cause-name">Timestamp</span><span class="cause-percentage">${timestamp}</span></div></div>`;
             
             radarWindow.style.display = 'block';
             updateRadarPosition(x, y);
@@ -340,42 +429,10 @@
 
         function updateRadarPosition(x, y) {
             const radarWindow = document.getElementById('radarWindow');
-            
-            // Position the window near the cursor with better positioning logic
-            let posX = x + 20;
-            let posY = y + 10;
-            
-            // Get window dimensions - need to temporarily show it to measure
-            const wasHidden = radarWindow.style.display === 'none';
-            if (wasHidden) {
-                radarWindow.style.visibility = 'hidden';
-                radarWindow.style.display = 'block';
-            }
-            
+            let posX = x + 20, posY = y + 10;
             const rect = radarWindow.getBoundingClientRect();
-            const windowWidth = rect.width;
-            const windowHeight = rect.height;
-            
-            // Reset visibility if it was hidden
-            if (wasHidden) {
-                radarWindow.style.display = 'none';
-                radarWindow.style.visibility = 'visible';
-            }
-            
-            // Adjust horizontal position
-            if (posX + windowWidth > window.innerWidth - 10) {
-                posX = x - windowWidth - 20; // Show to the left of cursor
-            }
-            
-            // Adjust vertical position  
-            if (posY + windowHeight > window.innerHeight - 10) {
-                posY = y - windowHeight - 10; // Show above cursor
-            }
-            
-            // Ensure window stays on screen
-            posX = Math.max(10, Math.min(posX, window.innerWidth - windowWidth - 10));
-            posY = Math.max(10, Math.min(posY, window.innerHeight - windowHeight - 10));
-            
+            if (posX + rect.width > window.innerWidth - 10) posX = x - rect.width - 20;
+            if (posY + rect.height > window.innerHeight - 10) posY = y - rect.height - 10;
             radarWindow.style.left = posX + 'px';
             radarWindow.style.top = posY + 'px';
         }
@@ -385,163 +442,179 @@
             hoveredMesh = null;
         }
 
-        // Load world map data
+        // --- Level 3 View Functions ---
+        function showLevel3View(datacenterName) {
+            currentLevel = 3;
+            renderer.domElement.style.filter = 'blur(5px) brightness(0.7)';
+
+            const overlay = document.getElementById('level3Overlay');
+            const title = document.getElementById('l3-title');
+            const nodesContainer = document.getElementById('l3-nodes-container');
+            const svgContainer = document.getElementById('l3-svg-container');
+            const insightsContainer = document.getElementById('l3-ml-insights-content');
+            
+            nodesContainer.innerHTML = '';
+            insightsContainer.innerHTML = '';
+            while (svgContainer.lastChild.nodeName !== 'defs') {
+                svgContainer.removeChild(svgContainer.lastChild);
+            }
+
+            if (activeCharts.length) {
+                activeCharts.forEach(c => c.destroy());
+                activeCharts = [];
+            }
+
+            title.textContent = `Network Flow Map - ${datacenterName} DC`;
+            const data = datacenterDetails[datacenterName] || datacenterDetails['Pune'];
+
+            // Populate ML Insights Panel
+            data.mlInsights.forEach(insight => {
+                const insightEl = document.createElement('div');
+                insightEl.className = 'l3-insight-item';
+                insightEl.innerHTML = `
+                    <div class="l3-insight-title">${insight.title}</div>
+                    <div class="l3-insight-text">${insight.text}</div>
+                `;
+                insightsContainer.appendChild(insightEl);
+            });
+
+
+            const nodeElements = {};
+            data.nodes.forEach(node => {
+                const nodeEl = document.createElement('div');
+                nodeEl.className = `l3-node l3-node-${node.type}`;
+                nodeEl.id = `l3-node-${node.id}`;
+                nodeEl.style.left = node.pos.x;
+                nodeEl.style.top = node.pos.y;
+                nodeEl.style.transform = 'translate(-50%, -50%)';
+                
+                let iconHtml = '';
+                if(node.type === 'tier') {
+                    iconHtml = `<div class="l3-node-icon-text">${node.icon}<span>Nodes</span></div> ${node.tag ? `<div class="l3-node-tag">${node.tag}</div>`: ''}`;
+                } else if (node.type === 'loadbalancer') {
+                    iconHtml = `<svg class="l3-node-icon-svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 21V11a4 4 0 0 1 4-4h5"/><path d="M20 21v-5a4 4 0 0 0-4-4H4"/><path d="M4 3h5v5"/></svg>`;
+                } else if (node.type === 'database') {
+                    iconHtml = `<svg class="l3-node-icon-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 4.24 2 7v10c0 2.76 4.48 5 10 5s10-2.24 10-5V7c0-2.76-4.48-5-10-5zm0 2c4.42 0 8 1.79 8 4s-3.58 4-8 4-8-1.79-8-4 3.58-4 8-4zm0 14c-4.42 0-8-1.79-8-4v-3.33c1.45.99 4.47 1.63 8 1.63s6.55-.64 8-1.63V15c0 2.21-3.58 4-8 4z"/></svg>`
+                }
+
+                nodeEl.innerHTML = `
+                    ${node.kpis ? `<div class="l3-node-kpis status-${node.status}">${node.kpis}</div>` : ''}
+                    <div class="l3-node-core">
+                        <div class="l3-node-icon-wrapper status-${node.status}">${iconHtml}</div>
+                    </div>
+                    <div class="l3-node-label">${node.label}</div>
+                `;
+                nodesContainer.appendChild(nodeEl);
+                nodeElements[node.id] = nodeEl;
+            });
+            
+            setTimeout(() => {
+                const mapContainer = document.querySelector('.l3-network-map');
+                if (!mapContainer) return;
+                const mapRect = mapContainer.getBoundingClientRect();
+
+                data.connections.forEach(conn => {
+                    const fromNode = nodeElements[conn.from];
+                    const toNode = nodeElements[conn.to];
+                    if (!fromNode || !toNode) return;
+
+                    const fromRect = fromNode.getBoundingClientRect();
+                    const toRect = toNode.getBoundingClientRect();
+                    
+                    const x1 = fromRect.left + fromRect.width / 2 - mapRect.left;
+                    const y1 = fromRect.top + fromRect.height / 2 - mapRect.top;
+                    const x2 = toRect.left + toRect.width / 2 - mapRect.left;
+                    const y2 = toRect.top + toRect.height / 2 - mapRect.top;
+
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    line.setAttribute('d', `M${x1},${y1} L${x2},${y2}`);
+                    line.setAttribute('class', `l3-connection-line status-${conn.status}`);
+                    svgContainer.appendChild(line);
+
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', (x1 + x2) / 2);
+                    text.setAttribute('y', (y1 + y2) / 2 - 5);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('class', `l3-connection-metric status-${conn.status}`);
+                    text.textContent = conn.metric;
+                    svgContainer.appendChild(text);
+                });
+            }, 0);
+
+            createL3Charts();
+            overlay.style.display = 'flex';
+        }
+
+        function hideLevel3View() {
+            if(currentLevel !== 3) return;
+            const overlay = document.getElementById('level3Overlay');
+            overlay.style.display = 'none';
+            renderer.domElement.style.filter = 'none';
+            if (activeCharts.length) {
+                activeCharts.forEach(c => c.destroy());
+                activeCharts = [];
+            }
+            currentLevel = 2;
+            updateStatus(`Zoomed into: India. Click a node for details.`);
+        }
+
+        function createL3Charts() {
+            const chartLabels = ['11:10 AM', '11:15 AM', '11:20 AM', '11:25 AM', '11:30 AM', '11:35 AM'];
+            const tickColor = '#8b949e';
+            const gridColor = '#30363d';
+
+            const commonOptions = (title) => ({
+                maintainAspectRatio: false,
+                plugins: { 
+                    legend: { display: false }, 
+                    title: { display: true, text: title, font: {size: 12}, align: 'start', padding:{bottom: 10}, color: tickColor } 
+                },
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { font: { size: 10 }, color: tickColor },
+                        grid: { color: gridColor }
+                    },
+                    x: { 
+                        ticks: { font: { size: 10 }, color: tickColor },
+                        grid: { color: gridColor }
+                    }
+                }
+            });
+            
+            activeCharts.push(new Chart('l3-chart-throughput', { type: 'line', data: { labels: chartLabels, datasets: [{ data: [0, 0, 0, 0, 0, 0], borderColor: '#388bfd', borderWidth: 2, pointRadius: 0 }] }, options: commonOptions('Throughput (GB/s avg)') }));
+            activeCharts.push(new Chart('l3-chart-tcploss', { type: 'line', data: { labels: chartLabels, datasets: [{ data: [0.1, 0, 0.2, 0, 0.1, 0.3], borderColor: '#f0ad4e', borderWidth: 1, pointRadius: 0, fill: true, backgroundColor: 'rgba(240, 173, 78, 0.1)' }] }, options: commonOptions('TCP Loss (per mille avg)') }));
+            activeCharts.push(new Chart('l3-chart-pie', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [20, 30, 48, 40, 25, 35], backgroundColor: '#5bc0de' }] }, options: commonOptions('PIE (events)') }));
+            activeCharts.push(new Chart('l3-chart-errors', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [2, 1, 5, 3, 4, 2], backgroundColor: '#f85149' }] }, options: commonOptions('Errors (count)') }));
+        }
+
+        // --- Map Loading & Drawing Functions ---
         async function loadWorldMap() {
             try {
-                const response = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json');
+                const response = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
                 const topology = await response.json();
-                
-                // Convert TopoJSON to GeoJSON using topojson library
-                const countries = topojson.feature(topology, topology.objects.land);
-                
+                const countries = topojson.feature(topology, topology.objects.countries);
                 drawMap(countries);
                 updateStatus('Map loaded - Monitoring congestion...');
-                
-                // Start congestion simulation
                 startCongestionSimulation();
             } catch (error) {
                 console.error('Error loading map:', error);
                 updateStatus('Error loading map data');
-                
-                // Fallback: create a simple test geometry
-                createFallbackMap();
             }
-        }
-        
-        function createFallbackMap() {
-            // Create some test rectangles as fallback
-            const testRegions = [
-                { coords: [[-100, 40], [-80, 40], [-80, 20], [-100, 20]], level: 'critical' },
-                { coords: [[0, 50], [20, 50], [20, 30], [0, 30]], level: 'high' },
-                { coords: [[100, 20], [120, 20], [120, 0], [100, 0]], level: 'medium' },
-                { coords: [[-50, -20], [-30, -20], [-30, -40], [-50, -40]], level: 'low' }
-            ];
-            
-            testRegions.forEach((region, index) => {
-                const shape = new THREE.Shape();
-                region.coords.forEach((coord, i) => {
-                    if (i === 0) {
-                        shape.moveTo(coord[0], coord[1]);
-                    } else {
-                        shape.lineTo(coord[0], coord[1]);
-                    }
-                });
-                
-                const geometry = new THREE.ShapeGeometry(shape);
-                const material = new THREE.MeshBasicMaterial({ 
-                    color: congestionColors[region.level],
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide
-                });
-                
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.userData = {
-                    countryId: index,
-                    originalColor: new THREE.Color().copy(congestionColors[region.level]),
-                    currentColor: new THREE.Color().copy(congestionColors[region.level]),
-                    targetColor: congestionColors[region.level],
-                    congestionLevel: region.level,
-                    hasDevices: region.level !== 'low'
-                };
-                
-                mapGroup.add(mesh);
-                countryMeshes.push(mesh);
-            });
-            
-            updateStatus('Fallback map loaded - Monitoring congestion...');
-            startCongestionSimulation();
         }
 
         function drawMap(geojson) {
-            geojson.features.forEach((feature, index) => {
+            geojson.features.forEach((feature) => {
                 if (feature.geometry.type === 'Polygon') {
-                    createCountryMesh(feature.geometry.coordinates, index);
+                    createCountryMesh(feature.geometry.coordinates, feature.properties);
                 } else if (feature.geometry.type === 'MultiPolygon') {
-                    feature.geometry.coordinates.forEach((polygon, polyIndex) => {
-                        createCountryMesh(polygon, index * 1000 + polyIndex);
+                    feature.geometry.coordinates.forEach((polygon) => {
+                        createCountryMesh(polygon, feature.properties);
                     });
                 }
             });
         }
-
-        function createCountryMesh(coordinates, id) {
-            coordinates.forEach(ring => {
-                if (ring.length < 3) return;
-                
-                // Filter and validate coordinates
-                const validCoords = ring.filter(coord => {
-                    const [lng, lat] = coord;
-                    return lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
-                });
-                
-                if (validCoords.length < 3) return;
-                
-                // Split polygons that cross the antimeridian (180/-180 longitude)
-                const polygonGroups = splitAntimeridianPolygon(validCoords);
-                
-                polygonGroups.forEach(coordGroup => {
-                    if (coordGroup.length < 3) return;
-                    
-                    const shape = new THREE.Shape();
-                    
-                    coordGroup.forEach((coord, index) => {
-                        const [lng, lat] = coord;
-                        const x = lng;
-                        const y = lat;
-                        
-                        if (index === 0) {
-                            shape.moveTo(x, y);
-                        } else {
-                            shape.lineTo(x, y);
-                        }
-                    });
-                    
-                    try {
-                        // Randomly determine if this region has devices (70% chance)
-                        const hasDevices = Math.random() > 0.3;
-                        let initialColor, initialLevel;
-                        
-                        if (hasDevices) {
-                            // Region has devices - assign random congestion level
-                            const activeLevels = ['medium', 'high', 'critical'];
-                            initialLevel = activeLevels[Math.floor(Math.random() * activeLevels.length)];
-                            initialColor = congestionColors[initialLevel];
-                        } else {
-                            // No devices - gray
-                            initialLevel = 'low';
-                            initialColor = congestionColors['low']; // Gray
-                        }
-                        
-                        // Create filled geometry
-                        const geometry = new THREE.ShapeGeometry(shape);
-                        const material = new THREE.MeshBasicMaterial({ 
-                            color: initialColor,
-                            transparent: true,
-                            opacity: hasDevices ? 0.7 : 0.3,
-                            side: THREE.DoubleSide
-                        });
-                        
-                        const mesh = new THREE.Mesh(geometry, material);
-                        mesh.userData = { 
-                            countryId: id, 
-                            originalColor: new THREE.Color().copy(initialColor),
-                            currentColor: new THREE.Color().copy(initialColor),
-                            targetColor: initialColor,
-                            congestionLevel: initialLevel,
-                            hasDevices: hasDevices
-                        };
-                        
-                        mapGroup.add(mesh);
-                        countryMeshes.push(mesh);
-                    } catch (error) {
-                        // Skip problematic geometries
-                        console.warn('Skipping invalid geometry:', error);
-                    }
-                });
-            });
-        }
-
+        
         function splitAntimeridianPolygon(coordinates) {
             const groups = [];
             let currentGroup = [];
@@ -552,21 +625,16 @@
                 
                 if (prevCoord) {
                     const [prevLng] = prevCoord;
-                    // Check for large longitude jumps (likely antimeridian crossing)
                     if (Math.abs(lng - prevLng) > 180) {
-                        // End current group and start new one
                         if (currentGroup.length > 2) {
                             groups.push([...currentGroup]);
                         }
-                        currentGroup = [[lng, lat]];
-                        continue;
+                        currentGroup = [];
                     }
                 }
-                
                 currentGroup.push([lng, lat]);
             }
             
-            // Add the last group
             if (currentGroup.length > 2) {
                 groups.push(currentGroup);
             }
@@ -574,38 +642,60 @@
             return groups.length > 0 ? groups : [coordinates];
         }
 
+        function createCountryMesh(coordinates, properties) {
+            coordinates.forEach(ring => {
+                if (ring.length < 3) return;
+                const polygonGroups = splitAntimeridianPolygon(ring);
+
+                polygonGroups.forEach(coordGroup => {
+                    if (coordGroup.length < 3) return;
+                    const shape = new THREE.Shape();
+                    coordGroup.forEach(([lng, lat], index) => {
+                        if (index === 0) shape.moveTo(lng, lat);
+                        else shape.lineTo(lng, lat);
+                    });
+                    
+                    const hasDevices = Math.random() > 0.3;
+                    let initialColor, initialLevel;
+                    if (hasDevices) {
+                        initialLevel = activeLevels[Math.floor(Math.random() * activeLevels.length)];
+                        initialColor = congestionColors[initialLevel];
+                    } else {
+                        initialLevel = 'low';
+                        initialColor = congestionColors['low'];
+                    }
+                    
+                    const geometry = new THREE.ShapeGeometry(shape);
+                    const material = new THREE.MeshBasicMaterial({ color: initialColor, transparent: true, opacity: hasDevices ? 0.7 : 0.3, side: THREE.DoubleSide });
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.userData = { 
+                        name: properties.name, 
+                        originalColor: new THREE.Color().copy(initialColor),
+                        currentColor: new THREE.Color().copy(initialColor),
+                        targetColor: initialColor,
+                        congestionLevel: initialLevel,
+                        hasDevices: hasDevices
+                    };
+                    mapGroup.add(mesh);
+                    countryMeshes.push(mesh);
+                });
+            });
+        }
+        
+        // --- Simulation & Status Update Functions ---
         function startCongestionSimulation() {
-            // Change congestion level every 4 seconds
-            setInterval(() => {
-                const randomLevel = congestionLevels[Math.floor(Math.random() * congestionLevels.length)];
-                setCongestionLevel(randomLevel);
-            }, 4000);
-            
-            // Initial random assignments to different countries
             setInterval(() => {
                 assignRandomCongestion();
             }, 6000);
         }
 
-        function setCongestionLevel(level) {
-            if (congestionColors[level]) {
-                currentCongestionLevel = level;
-                targetColor = congestionColors[level];
-                updateStatus(`Global congestion level: ${level.toUpperCase()}`);
-            }
-        }
-
         function assignRandomCongestion() {
-            // Update congestion for regions that have devices
             countryMeshes.forEach(mesh => {
                 if (mesh.userData.hasDevices) {
-                    // Only change congestion for regions with devices
-                    const activeLevels = ['medium', 'high', 'critical'];
                     const randomLevel = activeLevels[Math.floor(Math.random() * activeLevels.length)];
                     mesh.userData.targetColor = congestionColors[randomLevel];
                     mesh.userData.congestionLevel = randomLevel;
                 }
-                // Gray regions (no devices) remain unchanged
             });
         }
 
@@ -615,169 +705,175 @@
             statusElement.innerHTML = indicator + message;
         }
 
+        function getRandomActiveColor() {
+            const randomLevel = activeLevels[Math.floor(Math.random() * activeLevels.length)];
+            return congestionColors[randomLevel].clone();
+        }
+
+        // --- Main Animation Loop ---
         function animate() {
             requestAnimationFrame(animate);
-            
             time += 0.02;
+
+            if (animationState === 'centering') {
+                const rotationLerpFactor = 0.1; 
+                rotationX += (targetRotationX - rotationX) * rotationLerpFactor;
+                rotationY += (targetRotationY - rotationY) * rotationLerpFactor;
+                mapGroup.rotation.x = rotationX;
+                mapGroup.rotation.y = rotationY;
+
+                if (Math.abs(rotationX) < 0.01 && Math.abs(rotationY) < 0.01) {
+                    rotationX = 0; rotationY = 0;
+                    mapGroup.rotation.x = 0; mapGroup.rotation.y = 0;
+                    
+                    animationState = 'zooming';
+                    currentLevel = 2;
+                    
+                    const boundingBox = new THREE.Box3().setFromObject(zoomTargetMesh);
+                    const center = boundingBox.getCenter(new THREE.Vector3());
+                    const size = boundingBox.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    
+                    targetCameraPosition.copy(center).add(new THREE.Vector3(0, 0, maxDim * 1.8));
+                    targetLookAt.copy(center);
+
+                    globalConnectionsGroup.visible = false;
+                    indiaConnectionsGroup.visible = true;
+                    updateStatus(`Zoomed into: ${zoomTargetMesh.userData.name}. Click a node for details.`);
+                }
+            } else if (animationState === 'zooming') {
+                const cameraLerpFactor = 0.15;
+                camera.position.lerp(targetCameraPosition, cameraLerpFactor);
+                currentLookAt.lerp(targetLookAt, cameraLerpFactor);
+                camera.lookAt(currentLookAt);
+
+                if (camera.position.distanceTo(targetCameraPosition) < 0.1) {
+                    camera.position.copy(targetCameraPosition);
+                    currentLookAt.copy(targetLookAt);
+                    camera.lookAt(currentLookAt);
+                    animationState = 'idle';
+                    zoomTargetMesh = null;
+                }
+            } else { // 'idle' state
+                const cameraLerpFactor = 0.15;
+                camera.position.lerp(targetCameraPosition, cameraLerpFactor);
+                currentLookAt.lerp(targetLookAt, cameraLerpFactor);
+                camera.lookAt(currentLookAt);
+                
+                if (currentLevel === 1) {
+                    const rotationLerpFactor = 0.2;
+                    rotationX += (targetRotationX - rotationX) * rotationLerpFactor;
+                    rotationY += (targetRotationY - rotationY) * rotationLerpFactor;
+                    mapGroup.rotation.x = rotationX;
+                    mapGroup.rotation.y = rotationY;
+                }
+            }
             
-            // Smooth rotation
-            rotationX += (targetRotationX - rotationX) * 0.05;
-            rotationY += (targetRotationY - rotationY) * 0.05;
-            mapGroup.rotation.x = rotationX;
-            mapGroup.rotation.y = rotationY;
-            
-            // Global breathing effect
-            const globalPulse = 0.6 + 0.4 * Math.sin(time * 0.3);
-            currentColor.lerp(targetColor, 0.02);
-            
-            // Update country colors with breathing effect
             countryMeshes.forEach((mesh, index) => {
                 if (mesh.userData.hasDevices) {
-                    // Regions with devices - apply breathing effect
                     const phase = (index * 0.1) % (Math.PI * 2);
                     const localPulse = 0.7 + 0.3 * Math.sin(time * 0.5 + phase);
-                    
-                    // Smooth color transitions
                     mesh.userData.currentColor.lerp(mesh.userData.targetColor, 0.03);
-                    
-                    // Create breathing effect by blending with a slightly different shade
                     const baseColor = mesh.userData.currentColor.clone();
-                    const brightColor = baseColor.clone().multiplyScalar(1.3); // Brighter version
-                    const dimColor = baseColor.clone().multiplyScalar(0.7);    // Dimmer version
-                    
-                    // Interpolate between dim and bright versions of the same color
+                    const brightColor = baseColor.clone().multiplyScalar(1.3);
+                    const dimColor = baseColor.clone().multiplyScalar(0.7);
                     const breathingColor = dimColor.clone().lerp(brightColor, localPulse);
-                    
                     mesh.material.color.copy(breathingColor);
                     mesh.material.opacity = 0.5 + 0.2 * localPulse;
                 } else {
-                    // No devices - keep static gray with subtle breathing
-                    const grayPulse = 0.8 + 0.2 * Math.sin(time * 0.3);
-                    mesh.material.color.setRGB(0.5 * grayPulse, 0.5 * grayPulse, 0.5 * grayPulse);
                     mesh.material.opacity = 0.3;
                 }
             });
-
-            connectionLines.forEach((line, index) => {
+            
+            const allLines = [...globalConnectionsGroup.children, ...indiaConnectionsGroup.children].filter(c => c.type === "Line");
+            allLines.forEach((line, index) => {
                 const phase = (index * 0.1) % (Math.PI * 2);
                 const localPulse = 0.7 + 0.3 * Math.sin(time * 0.5 + phase);
-
                 line.userData.currentColor.lerp(line.userData.targetColor, 0.03);
                 const baseColor = line.userData.currentColor.clone();
-                const brightColor = baseColor.clone().multiplyScalar(1.3);
-                const dimColor = baseColor.clone().multiplyScalar(0.7);
-                const breathingColor = dimColor.clone().lerp(brightColor, localPulse);
-
+                const breathingColor = baseColor.clone().lerp(baseColor.clone().multiplyScalar(1.3), localPulse);
                 line.material.color.copy(breathingColor);
             });
-
-
-            
             
             renderer.render(scene, camera);
         }
 
-        // Handle window resize
+        // --- Window Resize Handler ---
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        setInterval(() => {
-            connectionLines.forEach(line => {
-                line.userData.targetColor = getRandomActiveColor();
-            });
-        }, 5000);
-
-
-        // Initialize
-        loadWorldMap();
-        animate();
-
-        // Example connection points (Longitude, Latitude)
-        const connections = [
-            { from: { lon: -74, lat: 40 }, to: { lon: 2, lat: 48 } },    // New York -> Paris
-            { from: { lon: 2, lat: 48 }, to: { lon: 139, lat: 35 } },    // Paris -> Tokyo
-            { from: { lon: 139, lat: 35 }, to: { lon: -74, lat: 40 } },  // Tokyo -> New York
-            { from: { lon: -74, lat: 40 }, to: { lon: -0.1, lat: 51.5 } }, // New York -> London
-            { from: { lon: -0.1, lat: 51.5 }, to: { lon: 151, lat: -33 } }, // London -> Sydney
-            { from: { lon: 151, lat: -33 }, to: { lon: 116, lat: 40 } }, // Sydney -> Beijing
-            { from: { lon: 116, lat: 40 }, to: { lon: 37, lat: 55 } },   // Beijing -> Moscow
-            { from: { lon: 37, lat: 55 }, to: { lon: -58, lat: -34 } },  // Moscow -> Buenos Aires
-            { from: { lon: -58, lat: -34 }, to: { lon: -123, lat: 49 } }, // Buenos Aires -> Vancouver
-            { from: { lon: -123, lat: 49 }, to: { lon: -74, lat: 40 } }, // Vancouver -> New York
-            { from: { lon: 77, lat: 28 }, to: { lon: 139, lat: 35 } },   // Delhi -> Tokyo
-            { from: { lon: 77, lat: 28 }, to: { lon: -0.1, lat: 51.5 } }, // Delhi -> London
-            { from: { lon: -3.7, lat: 40 }, to: { lon: 151, lat: -33 } }, // Madrid -> Sydney
-            { from: { lon: 151, lat: -33 }, to: { lon: -74, lat: 40 } }  // Sydney -> New York
+        // --- Connection Data & Creation ---
+        const globalConnections= [
+            { from: { lon: -74, lat: 40, name: 'New York' }, to: { lon: 2, lat: 48, name: 'Paris' } },
+            { from: { lon: 2, lat: 48, name: 'Paris' }, to: { lon: 139, lat: 35, name: 'Tokyo' } },
+            { from: { lon: 139, lat: 35, name: 'Tokyo' }, to: { lon: -74, lat: 40, name: 'New York' } },
+            { from: { lon: -74, lat: 40, name: 'New York' }, to: { lon: -0.1, lat: 51.5, name: 'London' } },
+            { from: { lon: -0.1, lat: 51.5, name: 'London' }, to: { lon: 151, lat: -33, name: 'Sydney' } },
+            { from: { lon: 151, lat: -33, name: 'Sydney' }, to: { lon: 116, lat: 40, name: 'Beijing' } },
+            { from: { lon: 116, lat: 40, name: 'Beijing' }, to: { lon: 37, lat: 55, name: 'Moscow' } },
+            { from: { lon: 37, lat: 55, name: 'Moscow' }, to: { lon: -58, lat: -34, name: 'Buenos Aires' } },
+            { from: { lon: -58, lat: -34, name: 'Buenos Aires' }, to: { lon: -123, lat: 49, name: 'Vancouver' } },
+            { from: { lon: -123, lat: 49, name: 'Vancouver' }, to: { lon: -74, lat: 40, name: 'New York' } },
+            { from: { lon: 77, lat: 28, name: 'Delhi' }, to: { lon: 139, lat: 35, name: 'Tokyo' } },
+            { from: { lon: 77, lat: 28, name: 'Delhi' }, to: { lon: -0.1, lat: 51.5, name: 'London' } },
+            { from: { lon: -3.7, lat: 40, name: 'Madrid' }, to: { lon: 151, lat: -33, name: 'Sydney' } },
+            { from: { lon: 151, lat: -33, name: 'Sydney' }, to: { lon: -74, lat: 40, name: 'New York' } }
+        ];
+        const indiaConnections = [
+            { from: { lon: 73.85, lat: 18.52, name: 'Pune' }, to: { lon: 77.59, lat: 12.97, name: 'Bangalore' } },
+            { from: { lon: 77.59, lat: 12.97, name: 'Bangalore' }, to: { lon: 80.27, lat: 13.08, name: 'Chennai' } },
+            { from: { lon: 80.27, lat: 13.08, name: 'Chennai' }, to: { lon: 88.36, lat: 22.57, name: 'Kolkata' } },
+            { from: { lon: 88.36, lat: 22.57, name: 'Kolkata' }, to: { lon: 77.20, lat: 28.61, name: 'Delhi' } },
+            { from: { lon: 77.20, lat: 28.61, name: 'Delhi' }, to: { lon: 72.87, lat: 19.07, name: 'Mumbai' } },
+            { from: { lon: 72.87, lat: 19.07, name: 'Mumbai' }, to: { lon: 73.85, lat: 18.52, name: 'Pune' } },
+            { from: { lon: 77.20, lat: 28.61, name: 'Delhi' }, to: { lon: 77.59, lat: 12.97, name: 'Bangalore' } },
         ];
 
+        function lonLatToPlane(lon, lat) { return new THREE.Vector3(lon, lat, 0.1); }
 
-        // Convert lon/lat to plane coordinates
-        function lonLatToPlane(lon, lat) {
-            const mapWidth = 360;  // Based on your plane geometry width
-            const mapHeight = 180; // Based on your plane geometry height
-            const x = (lon / 180) * (mapWidth / 2);
-            const y = (lat / 90) * (mapHeight / 2);
-            return new THREE.Vector3(x, y, 0);
-        }
-
-        // Create glowing node (glowy dot at each connection point)
-        function createGlowingNode(position) {
-            const geometry = new THREE.SphereGeometry(1.2, 16, 16);  // small sphere
-            const material = new THREE.MeshBasicMaterial({ 
-                color: 0x00ffff,
-                transparent: true,
-                opacity: 0.9,
-                blending: THREE.AdditiveBlending
-            });
+        function createGlowingNode(position, name, group) {
+            const geometry = new THREE.SphereGeometry(0.8, 16, 16);
+            const material = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
             const sphere = new THREE.Mesh(geometry, material);
             sphere.position.copy(position);
-            mapGroup.add(sphere);  // Important: add to mapGroup
+            sphere.userData = { name: name, isNode: true };
+            group.add(sphere);
         }
 
-        // Create connection line (curved + glow effect)
-        function createConnectionLine(from, to) {
+        function createConnectionLine(from, to, group) {
             const start = lonLatToPlane(from.lon, from.lat);
             const end = lonLatToPlane(to.lon, to.lat);
-
             const mid = start.clone().lerp(end, 0.5);
-            mid.z += 50; // curve height
-
+            mid.z += start.distanceTo(end) * 0.2;
             const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
             const points = curve.getPoints(50);
             const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
             const lineColor = getRandomActiveColor();
-            const material = new THREE.LineBasicMaterial({ 
-                color: lineColor,
-                linewidth: 2,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
-            });
-
+            const material = new THREE.LineBasicMaterial({ color: lineColor, linewidth: 2, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
             const line = new THREE.Line(geometry, material);
-            line.userData = { 
-                originalColor: lineColor.clone(),
-                currentColor: lineColor.clone(),
-                targetColor: getRandomActiveColor() 
-            };
-            mapGroup.add(line);
-            connectionLines.push(line);
-
-            createGlowingNode(start);
-            createGlowingNode(end);
+            line.userData = { currentColor: lineColor.clone(), targetColor: getRandomActiveColor() };
+            group.add(line);
+            
+            const nodesInGroup = group.children.filter(c => c.userData.isNode);
+            if (from.name && !nodesInGroup.some(n => n.userData.name === from.name)) createGlowingNode(start, from.name, group);
+            if (to.name && !nodesInGroup.some(n => n.userData.name === to.name)) createGlowingNode(end, to.name, group);
         }
 
-        // Draw all connection lines
-        connections.forEach(conn => {
-            createConnectionLine(conn.from, conn.to);
-        });
+        setInterval(() => {
+            const allLines = [...globalConnectionsGroup.children, ...indiaConnectionsGroup.children].filter(c => c.type === 'Line');
+            allLines.forEach(line => {
+                if (line.userData) line.userData.targetColor = getRandomActiveColor();
+            });
+        }, 5000);
 
-        
+        // --- Initialize Application ---
+        loadWorldMap();
+        globalConnections.forEach(conn => createConnectionLine(conn.from, conn.to, globalConnectionsGroup));
+        indiaConnections.forEach(conn => createConnectionLine(conn.from, conn.to, indiaConnectionsGroup));
+        animate();
 
     </script>
 </body>
