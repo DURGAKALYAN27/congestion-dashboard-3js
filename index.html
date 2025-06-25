@@ -5,6 +5,8 @@
     <title>World Network Monitor</title>
     <!-- Chart.js for Level 3 Dashboard -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <!-- ADDED: Font Awesome for new diagram icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
     <style>
         body { 
             margin: 0; 
@@ -90,10 +92,11 @@
         .l3-content-wrapper { flex-grow: 1; display: flex; padding: 15px; gap: 15px; overflow: hidden; }
         .l3-main-panel { flex-grow: 1; display: flex; flex-direction: column; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
         .l3-main-panel-header { padding: 10px 15px; border-bottom: 1px solid #30363d; font-weight: 600; color: #f0f6fc; }
-        .l3-network-map { flex-grow: 1; position: relative; background: url('data:image/svg+xml;utf8,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(0,100,100,0.2)" stroke-width="0.5"/></pattern><pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse"><rect width="100" height="100" fill="url(%23smallGrid)"/><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(0,100,100,0.4)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)" /></svg>');}
+        /* MODIFIED: Changed background to a flat color for clarity of the new diagram */
+        .l3-network-map { flex-grow: 1; position: relative; background: #0d1117; padding: 20px;}
         
         .l3-right-panel {
-            flex-basis: 280px; flex-shrink: 0; background: #161b22; border: 1px solid #30363d;
+            flex-basis: 320px; flex-shrink: 0; background: #161b22; border: 1px solid #30363d;
             border-radius: 6px; padding: 15px; font-size: 14px; color: #c9d1d9;
         }
         .l3-right-panel h3 { margin: 0 0 20px 0; font-size: 16px; border-bottom: 1px solid #30363d; padding-bottom: 10px; color: #f0f6fc; font-weight: 600;}
@@ -101,36 +104,63 @@
         .l3-insight-title { color: #00ffff; font-size: 16px; margin: 0 0 8px 0; font-weight: bold; }
         .l3-insight-text { line-height: 1.5; font-size: 14px; }
         
+        /* DEPRECATED: Old node styles are no longer used for the new diagram, but kept for potential future use */
         .l3-node { position: absolute; display: flex; flex-direction: column; align-items: center; text-align: center; color: #f0f6fc; }
-        .l3-node-kpis { position: absolute; top: 0; left: 105%; white-space: nowrap; font-size: 11px; color: #f0f6fc; background: rgba(0,0,0,0.7); padding: 2px 4px; border-radius: 3px; border: 1px solid #30363d;}
-        .l3-node-kpis.status-error { color: #ff8080; font-weight: bold; }
-        .l3-node-core { position: relative; display: flex; align-items: center; justify-content: center; }
-        .l3-node-icon-wrapper { width: 50px; height: 50px; border-radius: 50%; border: 4px solid; display: flex; align-items: center; justify-content: center; background: #0d1117; }
-        .l3-node-icon-wrapper.status-ok { border-color: #3fb950; }
-        .l3-node-icon-wrapper.status-error { border-color: #f85149; }
-        .l3-node-icon-text { font-weight: bold; font-size: 12px; }
-        .l3-node-icon-text span { font-size: 10px; display: block; font-weight: normal; }
-        .l3-node-tag { position: absolute; bottom: -5px; right: -10px; background: #238636; color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px; border: 1px solid #30363d; }
-        .l3-node-label { margin-top: 5px; font-size: 12px; font-weight: 500; }
-
-        .l3-node-lb .l3-node-icon-wrapper { border-radius: 8px; width: 45px; height: 45px; border-color: #388bfd; background: rgba(56, 139, 253, 0.1); }
-        .l3-node-lb .l3-node-icon-svg { stroke: #58a6ff; stroke-width: 2; }
-        .l3-node-db .l3-node-icon-wrapper { border-radius: 0; border: none; background: transparent; }
-        .l3-node-db .l3-node-icon-svg { fill: #8b949e; width: 40px; height: 40px; }
         
-        .l3-connection-line { stroke-width: 2px; fill: none; }
-        .l3-connection-line.status-ok { stroke: #3fb950; marker-end: url(#arrowhead-ok); }
-        .l3-connection-line.status-error { stroke: #f85149; marker-end: url(#arrowhead-error); }
-        .l3-connection-metric { font-size: 11px; fill: #8b949e; text-shadow: 0 0 5px #000; }
-        .l3-connection-metric.status-error { fill: #ff8080; font-weight: bold; }
-
+        /* MODIFIED: Connection lines are now black/grey to match the diagram */
+        .l3-connection-line { stroke-width: 1.5px; fill: none; stroke: #8b949e; marker-end: url(#arrowhead-new); }
+        
         .l3-charts-container { flex-shrink: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; padding: 0 15px 15px 15px; height: 160px; }
         .l3-chart-wrapper { background: #161b22; padding: 10px; border: 1px solid #30363d; border-radius: 6px; }
+        
+        /* --- START: New Network Diagram Styles --- */
+        .nd-group {
+            position: absolute;
+            border: 1px solid #8b949e;
+            border-radius: 8px;
+        }
+        .nd-group-label {
+            position: absolute;
+            top: -10px;
+            left: 15px;
+            background: #0d1117;
+            padding: 0 8px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #c9d1d9;
+        }
+        .nd-node {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #c9d1d9;
+        }
+        .nd-icon {
+            font-size: 24px;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .nd-icon.fa-server { font-size: 30px; }
+        .nd-icon.fa-cloud { font-size: 36px; color: #58a6ff; }
+        .nd-icon.fa-lock { font-size: 20px; }
+        .nd-icon.fa-database { font-size: 22px; }
+        .nd-icon.fa-fire-wall { font-size: 40px; }
+        .nd-label {
+            font-size: 11px;
+            margin-top: 4px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        /* --- END: New Network Diagram Styles --- */
     </style>
 </head>
 <body>
     <div id="info">
-        <div>World Network Congestion Monitor</div>
+        <div>World Network Monitor</div>
         <div id="status">Loading... (Double-click to reset view)</div>
     </div>
     
@@ -158,15 +188,16 @@
                 <div class="l3-network-map">
                     <svg width="100%" height="100%" id="l3-svg-container" style="position: absolute; top: 0; left: 0;">
                         <defs>
-                            <marker id="arrowhead-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3fb950" /></marker>
-                            <marker id="arrowhead-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#f85149" /></marker>
+                            <!-- MODIFIED: New arrowhead for the new diagram -->
+                            <marker id="arrowhead-new" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8b949e" /></marker>
                         </defs>
                     </svg>
+                    <!-- This container will be filled by JavaScript -->
                     <div id="l3-nodes-container" style="position: relative; width: 100%; height: 100%;"></div>
                 </div>
             </div>
             <aside class="l3-right-panel">
-                <h3>ML-Driven Insights</h3>
+                <h3>System Insights</h3>
                 <div id="l3-ml-insights-content"></div>
             </aside>
         </div>
@@ -242,40 +273,14 @@
         };
         const locationNames = [ 'Data Center Alpha', 'Regional Hub Beta', 'Metro Node Gamma', 'Edge Router Delta', 'Core Switch Epsilon', 'Access Point Zeta', 'Gateway Eta', 'Relay Station Theta', 'Network Cluster Iota', 'Backbone Node Kappa', 'Distribution Point Lambda', 'Service Node Mu' ];
         
-        const datacenterDetails = {
-            'Pune': {
-                nodes: [
-                    { id: 'payment', type: 'tier', label: 'Payment-Tier', icon: '1', tag: 'Java', status: 'ok', pos: { x: '15%', y: '75%' } },
-                    { id: 'order', type: 'tier', label: 'Order-Tier', icon: '2', tag: 'Java', status: 'ok', kpis: '0.685ms<br>0 PIE, 0 Errors', pos: { x: '15%', y: '25%' } },
-                    { id: 'lb1', type: 'loadbalancer', label: '10.0.11.75:8080', status: 'ok', pos: { x: '40%', y: '50%' } },
-                    { id: 'ecom1', type: 'tier', label: 'Ecom-Tier1', icon: '2', tag: 'Java', status: 'ok', kpis: '3.356ms<br>5 PIE, 0 Errors', pos: { x: '65%', y: '25%' } },
-                    { id: 'inventory', type: 'tier', label: 'Inventory-Tier', icon: '4', tag: 'Java', status: 'error', kpis: '0.54ms<br>38 PIE, 5 Errors', pos: { x: '65%', y: '75%' } },
-                    { id: 'db', type: 'database', label: '2 JDBC backends', status: 'ok', pos: { x: '90%', y: '75%' } },
-                ],
-                connections: [
-                    { from: 'payment', to: 'lb1', status: 'ok', metric: '0.92 ms, 0 PIE, 0 Errors' },
-                    { from: 'order', to: 'lb1', status: 'error', metric: '0.685 ms, 0 PIE, 0 Errors' },
-                    { from: 'lb1', to: 'ecom1', status: 'ok', metric: '0.92 ms, 0 PIE, 4 Errors' },
-                    { from: 'lb1', to: 'inventory', status: 'ok', metric: '9.328 ms, 0 PIE, 0 Errors' },
-                    { from: 'ecom1', to: 'inventory', status: 'ok', metric: '7.995 ms, 1 PIE, 0 Errors' },
-                    { from: 'inventory', to: 'db', status: 'error', metric: '0.751 ms, 38 PIE, 5 Errors' },
-                ],
-                mlInsights: [
-                    { title: 'Anomaly Detection', text: 'Severity-3 Anomaly detected in Inventory-Tier (High Latency). System investigating.' },
-                    { title: 'Predictive Analysis', text: 'Traffic spike predicted in 2 hours due to promotional event. Ecom-Tier1 scaling recommended.' },
-                    { title: 'Optimization Note', text: 'The connection from Order-Tier to the load balancer is showing unusual error patterns despite low latency.' }
-                ]
-            },
+        // This data is now generic, as the diagram is static
+        const genericInsights = {
+            mlInsights: [
+                { title: 'System Status', text: 'All systems are reporting nominal performance. No active alerts.' },
+                { title: 'Security Posture', text: 'Firewall is actively filtering traffic. No intrusion attempts detected in the last hour.' },
+                { title: 'Connectivity Health', text: 'External and internal network links show stable latency and packet delivery.' }
+            ]
         };
-        ['Delhi', 'Mumbai', 'Chennai', 'Kolkata', 'Bangalore'].forEach(city => {
-            datacenterDetails[city] = { ...datacenterDetails['Pune'], 
-                mlInsights: [
-                    { title: 'Anomaly Detection', text: 'No critical anomalies detected. System stable.' },
-                    { title: 'Predictive Analysis', text: 'Normal traffic patterns expected for the next 6 hours.' },
-                    { title: 'Optimization Note', text: `All services in ${city} have capacity for a 2x traffic increase.` }
-                ]
-            };
-        });
 
         // --- Event Listeners Setup ---
         document.addEventListener('mousedown', onMouseDown, false);
@@ -341,7 +346,7 @@
                 
                 const clickedNode = nodeIntersects.find(i => i.object.userData.isNode);
                 if (clickedNode) {
-                    showLevel3View(clickedNode.object.userData.name);
+                    showLevel3View(clickedNode.object.userData.name); // Pass name for title
                 } else if (countryIntersects.length === 0) {
                      resetView();
                 }
@@ -442,7 +447,7 @@
             hoveredMesh = null;
         }
 
-        // --- Level 3 View Functions ---
+        // --- MODIFIED: Level 3 View Function ---
         function showLevel3View(datacenterName) {
             currentLevel = 3;
             renderer.domElement.style.filter = 'blur(5px) brightness(0.7)';
@@ -453,22 +458,22 @@
             const svgContainer = document.getElementById('l3-svg-container');
             const insightsContainer = document.getElementById('l3-ml-insights-content');
             
+            // --- Clear previous state ---
             nodesContainer.innerHTML = '';
             insightsContainer.innerHTML = '';
             while (svgContainer.lastChild.nodeName !== 'defs') {
                 svgContainer.removeChild(svgContainer.lastChild);
             }
-
             if (activeCharts.length) {
                 activeCharts.forEach(c => c.destroy());
                 activeCharts = [];
             }
-
-            title.textContent = `Network Flow Map - ${datacenterName} DC`;
-            const data = datacenterDetails[datacenterName] || datacenterDetails['Pune'];
-
-            // Populate ML Insights Panel
-            data.mlInsights.forEach(insight => {
+            
+            // --- Populate with new diagram content ---
+            title.textContent = `Hospital Network Diagram (${datacenterName} Campus)`;
+            
+            // Populate Generic Insights Panel
+            genericInsights.mlInsights.forEach(insight => {
                 const insightEl = document.createElement('div');
                 insightEl.className = 'l3-insight-item';
                 insightEl.innerHTML = `
@@ -478,72 +483,120 @@
                 insightsContainer.appendChild(insightEl);
             });
 
+            // Populate the diagram using static HTML
+            nodesContainer.innerHTML = `
+                <!-- External/Internet Zone -->
+                <div id="ext-web-citrix" class="nd-node" style="left: 5%; top: 75%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">External Review<br>via Citrix</div></div>
+                <div id="ext-web-browser" class="nd-node" style="left: 5%; top: 55%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">External Web<br>Browser Review</div></div>
+                <div id="ext-cell" class="nd-node" style="left: 5%; top: 35%;"><div class="nd-icon"><i class="fa-solid fa-mobile-screen"></i></div><div class="nd-label">Cell Phone<br>Review</div></div>
+                <div id="ext-tablet" class="nd-node" style="left: 5%; top: 15%;"><div class="nd-icon"><i class="fa-solid fa-tablet-screen-button"></i></div><div class="nd-label">Tablet<br>Review</div></div>
+                <div id="internet-cloud" class="nd-node" style="left: 18%; top: 45%;"><div class="nd-icon"><i class="fa-solid fa-cloud"></i></div><div class="nd-label">Internet</div></div>
 
-            const nodeElements = {};
-            data.nodes.forEach(node => {
-                const nodeEl = document.createElement('div');
-                nodeEl.className = `l3-node l3-node-${node.type}`;
-                nodeEl.id = `l3-node-${node.id}`;
-                nodeEl.style.left = node.pos.x;
-                nodeEl.style.top = node.pos.y;
-                nodeEl.style.transform = 'translate(-50%, -50%)';
+                <!-- Firewall -->
+                <div id="firewall" class="nd-node" style="left: 30%; top: 45%;"><div class="nd-icon"><i class="fa-solid fa-fire-wall"></i></div><div class="nd-label">Firewall</div></div>
+
+                <!-- Internal Network: Left Side -->
+                <div id="vpn" class="nd-node" style="left: 42%; top: 18%;"><div class="nd-icon"><i class="fa-solid fa-lock"></i></div><div class="nd-label">VPN</div></div>
+                <div id="mobile-server" class="nd-node" style="left: 48%; top: 10%;"><div class="nd-icon"><i class="fa-solid fa-server"></i></div><div class="nd-label">Persyst Mobile<br>Server</div></div>
+                <div id="web-browser-review" class="nd-node" style="left: 48%; top: 1%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">Web Browser<br>Review</div></div>
+                <div id="tablet-review" class="nd-node" style="left: 60%; top: 10%;"><div class="nd-icon"><i class="fa-solid fa-tablet-screen-button"></i></div><div class="nd-label">Tablet<br>Review</div></div>
                 
-                let iconHtml = '';
-                if(node.type === 'tier') {
-                    iconHtml = `<div class="l3-node-icon-text">${node.icon}<span>Nodes</span></div> ${node.tag ? `<div class="l3-node-tag">${node.tag}</div>`: ''}`;
-                } else if (node.type === 'loadbalancer') {
-                    iconHtml = `<svg class="l3-node-icon-svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 21V11a4 4 0 0 1 4-4h5"/><path d="M20 21v-5a4 4 0 0 0-4-4H4"/><path d="M4 3h5v5"/></svg>`;
-                } else if (node.type === 'database') {
-                    iconHtml = `<svg class="l3-node-icon-svg" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 4.24 2 7v10c0 2.76 4.48 5 10 5s10-2.24 10-5V7c0-2.76-4.48-5-10-5zm0 2c4.42 0 8 1.79 8 4s-3.58 4-8 4-8-1.79-8-4 3.58-4 8-4zm0 14c-4.42 0-8-1.79-8-4v-3.33c1.45.99 4.47 1.63 8 1.63s6.55-.64 8-1.63V15c0 2.21-3.58 4-8 4z"/></svg>`
-                }
+                <!-- Internal Network: Center -->
+                <div id="doctor-review" class="nd-node" style="left: 48%; top: 35%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">Doctor's Review<br>via Citrix</div></div>
+                <div id="file-server" class="nd-node" style="left: 68%; top: 45%;"><div class="nd-icon"><i class="fa-solid fa-database"></i></div><div class="nd-label">File Server</div></div>
+                <div id="mpm" class="nd-node" style="left: 60%; top: 25%;"><div class="nd-icon"><i class="fa-solid fa-display"></i></div><div class="nd-label">Multi-Patient<br>Monitor (MPM)</div></div>
 
-                nodeEl.innerHTML = `
-                    ${node.kpis ? `<div class="l3-node-kpis status-${node.status}">${node.kpis}</div>` : ''}
-                    <div class="l3-node-core">
-                        <div class="l3-node-icon-wrapper status-${node.status}">${iconHtml}</div>
-                    </div>
-                    <div class="l3-node-label">${node.label}</div>
-                `;
-                nodesContainer.appendChild(nodeEl);
-                nodeElements[node.id] = nodeEl;
-            });
+                <!-- Reading Room Group -->
+                <div class="nd-group" style="left: 40%; top: 58%; width: 40%; height: 40%;"><div class="nd-group-label">Reading Room</div></div>
+                <div id="cprc" class="nd-node" style="left: 48%; top: 70%;"><div class="nd-icon"><i class="fa-solid fa-server"></i></div><div class="nd-label">Virtual Review<br>via Citrix (CPRC)</div></div>
+                <div id="cprc-review1" class="nd-node" style="left: 44%; top: 88%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">Review via Citrix</div></div>
+                <div id="cprc-review2" class="nd-node" style="left: 54%; top: 88%;"><div class="nd-icon"><i class="fa-solid fa-desktop"></i></div><div class="nd-label">Review via Citrix</div></div>
+                <div id="cpr" class="nd-node" style="left: 68%; top: 70%;"><div class="nd-icon"><i class="fa-solid fa-server"></i></div><div class="nd-label">Review Station (CPR)</div></div>
+                <div id="aer" class="nd-node" style="left: 68%; top: 88%;"><div class="nd-icon"><i class="fa-solid fa-server"></i></div><div class="nd-label">Advanced Review (AER)</div></div>
+
+                <!-- Hospital Zones -->
+                <div class="nd-group" style="left: 82%; top: 5%; width: 16%; height: 28%;"><div class="nd-group-label">ICU</div></div>
+                <div id="icu-cpa1" class="nd-node" style="left: 89%; top: 13%;"><div class="nd-icon"><i class="fa-solid fa-computer"></i></div><div class="nd-label">Acquisition (CPA)</div></div>
+                <div id="icu-cpa2" class="nd-node" style="left: 89%; top: 25%;"><div class="nd-icon"><i class="fa-solid fa-computer"></i></div><div class="nd-label">Acquisition (CPA)</div></div>
+                
+                <div class="nd-group" style="left: 82%; top: 60%; width: 16%; height: 28%;"><div class="nd-group-label">EMU</div></div>
+                <div id="emu-cpa1" class="nd-node" style="left: 89%; top: 68%;"><div class="nd-icon"><i class="fa-solid fa-computer"></i></div><div class="nd-label">Acquisition (CPA)</div></div>
+                <div id="emu-cpa2" class="nd-node" style="left: 89%; top: 80%;"><div class="nd-icon"><i class="fa-solid fa-computer"></i></div><div class="nd-label">Acquisition (CPA)</div></div>
+            `;
             
+            // Use a timeout to ensure DOM elements are rendered before we try to connect them
             setTimeout(() => {
-                const mapContainer = document.querySelector('.l3-network-map');
-                if (!mapContainer) return;
-                const mapRect = mapContainer.getBoundingClientRect();
-
-                data.connections.forEach(conn => {
-                    const fromNode = nodeElements[conn.from];
-                    const toNode = nodeElements[conn.to];
-                    if (!fromNode || !toNode) return;
-
-                    const fromRect = fromNode.getBoundingClientRect();
-                    const toRect = toNode.getBoundingClientRect();
-                    
-                    const x1 = fromRect.left + fromRect.width / 2 - mapRect.left;
-                    const y1 = fromRect.top + fromRect.height / 2 - mapRect.top;
-                    const x2 = toRect.left + toRect.width / 2 - mapRect.left;
-                    const y2 = toRect.top + toRect.height / 2 - mapRect.top;
-
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    line.setAttribute('d', `M${x1},${y1} L${x2},${y2}`);
-                    line.setAttribute('class', `l3-connection-line status-${conn.status}`);
-                    svgContainer.appendChild(line);
-
-                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    text.setAttribute('x', (x1 + x2) / 2);
-                    text.setAttribute('y', (y1 + y2) / 2 - 5);
-                    text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('class', `l3-connection-metric status-${conn.status}`);
-                    text.textContent = conn.metric;
-                    svgContainer.appendChild(text);
-                });
+                drawNewDiagramConnections();
             }, 0);
 
             createL3Charts();
             overlay.style.display = 'flex';
         }
+
+        // --- NEW: Helper function to draw connections for the new static diagram ---
+        function drawNewDiagramConnections() {
+            const svgContainer = document.getElementById('l3-svg-container');
+            const mapContainer = document.querySelector('.l3-network-map');
+            if (!svgContainer || !mapContainer) return;
+            const mapRect = mapContainer.getBoundingClientRect();
+            
+            const connections = [
+                // External to Internet
+                { from: 'ext-web-citrix', to: 'internet-cloud' },
+                { from: 'ext-web-browser', to: 'internet-cloud' },
+                { from: 'ext-cell', to: 'internet-cloud' },
+                { from: 'ext-tablet', to: 'internet-cloud' },
+                // Internet to Firewall
+                { from: 'internet-cloud', to: 'firewall' },
+                // Firewall to internal
+                { from: 'firewall', to: 'vpn' },
+                { from: 'firewall', to: 'cprc' },
+                // VPN path
+                { from: 'vpn', to: 'mobile-server' },
+                // Mobile Server path
+                { from: 'mobile-server', to: 'web-browser-review' },
+                { from: 'mobile-server', to: 'tablet-review' },
+                // Internal connections
+                { from: 'mobile-server', to: 'doctor-review' },
+                { from: 'doctor-review', to: 'file-server' },
+                { from: 'cprc', to: 'file-server' },
+                { from: 'mpm', to: 'file-server' },
+                { from: 'cpr', to: 'file-server' },
+                { from: 'aer', to: 'file-server' },
+                // Reading Room connections
+                { from: 'cprc', to: 'cprc-review1' },
+                { from: 'cprc', to: 'cprc-review2' },
+                // Hospital Zone connections
+                { from: 'file-server', to: 'icu-cpa1'},
+                { from: 'file-server', to: 'icu-cpa2'},
+                { from: 'file-server', to: 'emu-cpa1'},
+                { from: 'file-server', to: 'emu-cpa2'},
+            ];
+
+            connections.forEach(conn => {
+                const fromNode = document.getElementById(conn.from);
+                const toNode = document.getElementById(conn.to);
+                if (!fromNode || !toNode) {
+                    console.warn('Could not find nodes for connection:', conn);
+                    return;
+                }
+
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+                
+                // Calculate center points relative to the map container
+                const x1 = fromRect.left + fromRect.width / 2 - mapRect.left;
+                const y1 = fromRect.top + fromRect.height / 2 - mapRect.top;
+                const x2 = toRect.left + toRect.width / 2 - mapRect.left;
+                const y2 = toRect.top + toRect.height / 2 - mapRect.top;
+
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                line.setAttribute('d', `M${x1},${y1} L${x2},${y2}`);
+                line.setAttribute('class', `l3-connection-line`);
+                svgContainer.appendChild(line);
+            });
+        }
+
 
         function hideLevel3View() {
             if(currentLevel !== 3) return;
@@ -582,10 +635,10 @@
                 }
             });
             
-            activeCharts.push(new Chart('l3-chart-throughput', { type: 'line', data: { labels: chartLabels, datasets: [{ data: [0, 0, 0, 0, 0, 0], borderColor: '#388bfd', borderWidth: 2, pointRadius: 0 }] }, options: commonOptions('Throughput (GB/s avg)') }));
+            activeCharts.push(new Chart('l3-chart-throughput', { type: 'line', data: { labels: chartLabels, datasets: [{ data: [1.2, 1.5, 1.4, 1.8, 1.6, 1.7], borderColor: '#388bfd', borderWidth: 2, pointRadius: 0 }] }, options: commonOptions('Throughput (GB/s avg)') }));
             activeCharts.push(new Chart('l3-chart-tcploss', { type: 'line', data: { labels: chartLabels, datasets: [{ data: [0.1, 0, 0.2, 0, 0.1, 0.3], borderColor: '#f0ad4e', borderWidth: 1, pointRadius: 0, fill: true, backgroundColor: 'rgba(240, 173, 78, 0.1)' }] }, options: commonOptions('TCP Loss (per mille avg)') }));
-            activeCharts.push(new Chart('l3-chart-pie', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [20, 30, 48, 40, 25, 35], backgroundColor: '#5bc0de' }] }, options: commonOptions('PIE (events)') }));
-            activeCharts.push(new Chart('l3-chart-errors', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [2, 1, 5, 3, 4, 2], backgroundColor: '#f85149' }] }, options: commonOptions('Errors (count)') }));
+            activeCharts.push(new Chart('l3-chart-pie', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [20, 30, 48, 40, 25, 35], backgroundColor: '#5bc0de' }] }, options: commonOptions('Citrix Sessions') }));
+            activeCharts.push(new Chart('l3-chart-errors', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [0, 0, 1, 0, 0, 0], backgroundColor: '#f85149' }] }, options: commonOptions('Firewall Blocks (count)') }));
         }
 
         // --- Map Loading & Drawing Functions ---
