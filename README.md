@@ -41,3 +41,7 @@ A 3D visualization of global network congestion using Three.js, featuring an int
 
     ```bash
     flask run
+
+Now you can click on India to see the level 2 view and then any datacenter to see the level 3 view.
+
+Feature to be added - User can upload their network diagram which is then visualized using Gemini and d3.js.
