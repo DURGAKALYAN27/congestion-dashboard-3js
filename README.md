@@ -14,3 +14,10 @@ A 3D visualization of global network congestion using Three.js, featuring an int
 - 🟡 **Yellow**: No congestion
 - 🟠 **Orange**: High congestion (possible critical congestion)
 - 🔴 **Red**: Critical congestion 
+
+
+
+
+
+
+============= NEEDS TO BE UPDATED ===============
