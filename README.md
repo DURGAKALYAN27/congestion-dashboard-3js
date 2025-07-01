@@ -35,7 +35,7 @@ A 3D visualization of global network congestion using Three.js, featuring an int
 
     ```bash
     pip install -r requirements.txt
-5. ⚙️ Change the .env.example to .env and enter your API key from aistudio.google.com
+5. ⚙️ Change the .env.example to .env and enter your API key from [Google AI Studio](https://aistudio.google.com).
 
 6. 🚀 Run the app - 
 
