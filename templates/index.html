@@ -68,7 +68,7 @@
         .scanning-line { color: #00ff00; animation: blink 1s infinite; }
         @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0.3; } }
 
-        /* --- Level 3 Datacenter View (DARK THEME) --- */
+        /* --- Level 3 Datacenter View --- */
         #level3Overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #0d1117; z-index: 2000; color: #c9d1d9;
@@ -340,7 +340,7 @@
         }
         function hideRadarWindow() { document.getElementById('radarWindow').style.display = 'none'; hoveredMesh = null; }
 
-        // --- INTEGRATED: Level 3 View Function - Now Dynamic ---
+        // --- Level 3 ---
         async function showLevel3View(datacenterName) {
             currentLevel = 3;
             renderer.domElement.style.filter = 'blur(5px) brightness(0.7)';
@@ -389,7 +389,7 @@
             createL3Charts();
         }
 
-        // --- NEW: Helper to assign icons based on node ID ---
+        // --- Helper to assign icons based on node ID ---
         function getIconForNode(id) {
             const lowerId = id.toLowerCase();
             if (lowerId.includes('server')) return 'fa-solid fa-server';
@@ -405,7 +405,7 @@
             return 'fa-solid fa-microchip'; // Default icon
         }
 
-        // --- NEW: Function to render the dynamic diagram using D3.js ---
+        // ---  Function to render the dynamic diagram using D3.js ---
         function renderDynamicDiagram(graph) {
             const nodesContainer = document.getElementById('l3-nodes-container');
             const svg = d3.select("#l3-svg-container");
