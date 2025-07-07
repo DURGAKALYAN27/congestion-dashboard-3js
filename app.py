@@ -13,13 +13,14 @@ client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 INSTRUCTIONS = """
 You are a vision model tasked with extracting a node-link graph from a network diagram image.
+Your goal is to identify devices and their connections, and also to infer their operational status.
 
 From the given image, output ONLY a JSON object in this exact format:
 
 {
   "nodes": [
-    { "id": "Node1" },
-    { "id": "Node2" }
+    { "id": "Node1", "status": "healthy" },
+    { "id": "Node2", "status": "critical" }
   ],
   "links": [
     { "source": "Node1", "target": "Node2" }
@@ -27,8 +28,10 @@ From the given image, output ONLY a JSON object in this exact format:
 }
 
 - Each node must have a unique "id". The "id" can be the name or label of the node.
+- Each node must have a "status" field, which can be one of three values: "healthy", "warning", or "critical".
+- To make the output more realistic, please pick at least a third of the nodes randomly and assign them a "warning" or "critical" status. Assign all other nodes a "healthy" status.
 - Each link must indicate connection from "source" to "target".
-- Do not include labels, explanations, or extra formatting — return valid, minimal JSON only.
+- Do not include any labels, explanations, or extra formatting. Return valid, minimal JSON only.
 """
 
 @app.route('/')
@@ -54,6 +57,7 @@ def get_graph_data():
             ]
         )
 
+        print(response.text) # for debugging   
         
         raw_text = response.text
         
@@ -81,3 +85,4 @@ def get_graph_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
