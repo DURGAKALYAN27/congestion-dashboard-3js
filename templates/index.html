@@ -183,6 +183,33 @@
             animation: pulse-ring 3s ease-out infinite;
             animation-play-state: running;
         }
+        
+        /* L3 Radar Analysis Window */
+        #l3-radar-window {
+            position: absolute;
+            background: rgba(13, 17, 23, 0.97);
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            color: #c9d1d9;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            display: none;
+            z-index: 2500;
+            min-width: 280px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            pointer-events: none; /* Prevents radar from blocking mouse events on nodes */
+        }
+        #l3-radar-window .radar-header { color: #f0f6fc; font-weight: 600; margin-bottom: 10px; text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 8px; font-size: 13px; }
+        #l3-radar-window .radar-section { margin-bottom: 8px; }
+        #l3-radar-window .radar-title { color: #8b949e; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; font-size: 10px; }
+        #l3-radar-window .cause-item { display: flex; justify-content: space-between; margin: 2px 0; padding: 3px 0; }
+        #l3-radar-window .cause-name { color: #c9d1d9; }
+        #l3-radar-window .cause-percentage { font-weight: bold; }
+        #l3-radar-window .severity-critical { color: #f85149; }
+        #l3-radar-window .severity-warning { color: #f0ad4e; }
+        #l3-radar-window .radar-pulse { animation: pulse 2s infinite; }
+        #l3-radar-window .scanning-line { color: #238636; animation: blink 1.2s infinite; }
 
     </style>
 </head>
@@ -229,6 +256,7 @@
             <div class="l3-chart-wrapper"><canvas id="l3-chart-pie"></canvas></div>
             <div class="l3-chart-wrapper"><canvas id="l3-chart-errors"></canvas></div>
         </div>
+        <div id="l3-radar-window"></div>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -288,6 +316,18 @@
             'critical': [ { name: 'Faulty Hardware or Cables', min: 75, max: 95 }, { name: 'Traffic Overload', min: 60, max: 85 }, { name: 'Oversubscription', min: 40, max: 70 }, { name: 'Buffer Bloat', min: 30, max: 60 }, { name: 'Inadequate QoS (Quality of Service)', min: 25, max: 50 }, { name: 'Misconfigured Load Balancers or Routing', min: 20, max: 45 }, { name: 'Slow-Receiver or End Device', min: 15, max: 40 }, { name: 'Microbursts', min: 10, max: 35 } ],
             'high': [ { name: 'Traffic Overload', min: 50, max: 75 }, { name: 'Buffer Bloat', min: 35, max: 65 }, { name: 'Oversubscription', min: 30, max: 55 }, { name: 'Slow-Receiver or End Device', min: 25, max: 50 }, { name: 'Inadequate QoS (Quality of Service)', min: 20, max: 45 }, { name: 'Misconfigured Load Balancers or Routing', min: 15, max: 35 }, { name: 'Faulty Hardware or Cables', min: 10, max: 30 }, { name: 'Microbursts', min: 8, max: 25 } ],
             'medium': [ { name: 'Traffic Overload', min: 30, max: 50 }, { name: 'Buffer Bloat', min: 20, max: 40 }, { name: 'Slow-Receiver or End Device', min: 15, max: 35 }, { name: 'Inadequate QoS (Quality of Service)', min: 10, max: 30 }, { name: 'Microbursts', min: 8, max: 25 }, { name: 'Oversubscription', min: 5, max: 20 }, { name: 'Misconfigured Load Balancers or Routing', min: 5, max: 18 }, { name: 'Faulty Hardware or Cables', min: 3, max: 15 } ]
+        };
+        const deviceFailureCauses = {
+            'critical': [
+                { name: 'CPU Utilization', min: 95, max: 100, unit: '%' }, { name: 'Memory Leak Detected', min: 80, max: 95, unit: '%' },
+                { name: 'Packet Drop Rate', min: 20, max: 50, unit: '%' }, { name: 'PSU Voltage Fluctuation', min: 15, max: 25, unit: '%' },
+                { name: 'Disk I/O Wait', min: 70, max: 90, unit: '%' },
+            ],
+            'warning': [
+                { name: 'CPU Utilization', min: 80, max: 94, unit: '%' }, { name: 'High Memory Usage', min: 75, max: 90, unit: '%' },
+                { name: 'Packet Drop Rate', min: 5, max: 19, unit: '%' }, { name: 'High Latency', min: 150, max: 300, unit: 'ms' },
+                { name: 'Disk Space Low', min: 85, max: 95, unit: '%' },
+            ]
         };
         const locationNames = [ 'Data Center Alpha', 'Regional Hub Beta', 'Metro Node Gamma', 'Edge Router Delta', 'Core Switch Epsilon' ];
         const genericInsights = {
@@ -380,6 +420,54 @@
         }
         function hideRadarWindow() { document.getElementById('radarWindow').style.display = 'none'; hoveredMesh = null; }
 
+        // --- Level 3 Radar Functions ---
+        function showL3RadarWindow(event, nodeData) {
+            if (nodeData.status !== 'warning' && nodeData.status !== 'critical') return;
+
+            const radarWindow = document.getElementById('l3-radar-window');
+            const level = nodeData.status;
+            const causes = deviceFailureCauses[level] || [];
+            const analysisData = causes.slice().sort(() => 0.5 - Math.random()).slice(0, 3)
+                .map(c => ({ name: c.name, value: Math.floor(Math.random() * (c.max - c.min) + c.min), unit: c.unit }));
+            const severityClass = `severity-${level}`;
+            const timestamp = new Date().toLocaleTimeString();
+            
+            radarWindow.innerHTML = `
+                <div class="radar-header radar-pulse">🔬 DEVICE DIAGNOSTICS</div>
+                <div class="radar-section">
+                    <div class="radar-title">DEVICE ID</div>
+                    <div class="cause-item"><span class="cause-name">${nodeData.id.replace(/_/g, ' ')}</span><span class="scanning-line">● LIVE</span></div>
+                </div>
+                <div class="radar-section">
+                    <div class="radar-title">STATUS</div>
+                    <div class="cause-item"><span class="cause-name">Current Status</span><span class="cause-percentage ${severityClass}">${level.toUpperCase()}</span></div>
+                </div>
+                <div class="radar-section">
+                    <div class="radar-title">LIVE METRICS</div>
+                    ${analysisData.map(item => `<div class="cause-item"><span class="cause-name">${item.name}</span><span class="cause-percentage">${item.value}${item.unit}</span></div>`).join('')}
+                </div>
+                <div class="radar-section">
+                    <div class="radar-title">LAST PING</div>
+                    <div class="cause-item"><span class="cause-name">Timestamp</span><span class="cause-percentage">${timestamp}</span></div>
+                </div>`;
+            
+            radarWindow.style.display = 'block';
+            updateL3RadarPosition(event);
+        }
+        function updateL3RadarPosition(event) {
+            const radarWindow = document.getElementById('l3-radar-window');
+            if (radarWindow.style.display === 'none') return;
+            let posX = event.clientX + 20, posY = event.clientY + 10;
+            const rect = radarWindow.getBoundingClientRect();
+            if (posX + rect.width > window.innerWidth - 10) posX = event.clientX - rect.width - 20;
+            if (posY + rect.height > window.innerHeight - 10) posY = event.clientY - rect.height - 10;
+            radarWindow.style.left = posX + 'px';
+            radarWindow.style.top = posY + 'px';
+        }
+        function hideL3RadarWindow() {
+            document.getElementById('l3-radar-window').style.display = 'none';
+        }
+
         // --- Level 3 ---
         async function showLevel3View(datacenterName) {
             currentLevel = 3;
@@ -469,6 +557,9 @@
                     return `<div class="nd-icon ${iconClass}"><i class="${iconClass}"></i></div>
                             <div class="nd-label">${d.id.replace(/_/g, ' ')}</div>`; 
                 })
+                .on('mouseenter', (event, d) => showL3RadarWindow(event, d))
+                .on('mousemove', (event) => updateL3RadarPosition(event))
+                .on('mouseleave', () => hideL3RadarWindow())
                 .call(d3.drag() 
                     .on("start", dragstarted)
                     .on("drag", dragged)

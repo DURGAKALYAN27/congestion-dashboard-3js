@@ -57,7 +57,7 @@ def get_graph_data():
             ]
         )
 
-        print(response.text) # for debugging   
+        # print(response.text) # for debugging   
         
         raw_text = response.text
         
