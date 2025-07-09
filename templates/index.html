@@ -778,15 +778,23 @@
                     const numPortsBottom = 4;
                     const totalWidthForPorts = 220; // A bit less than the switch width for padding
                     const horizontalSpacing = totalWidthForPorts / (numPortsTop - 1);
-                    const verticalOffset = 35; // How far from the switch's vertical center the rows are
+                    const topOffset = 0;       // <-- move top row slightly down
+                    const bottomOffset = 35;    // <-- keep bottom row as is
                     const startX = switchPos.x - totalWidthForPorts / 2;
 
                     if (portNumber >= 1 && portNumber <= numPortsTop) {
-                        return { x: startX + horizontalSpacing * (portNumber - 1), y: switchPos.y - verticalOffset };
+                        return {
+                            x: startX + horizontalSpacing * (portNumber - 1),
+                            y: switchPos.y - topOffset
+                        };
                     } else if (portNumber > numPortsTop && portNumber <= numPortsTop + numPortsBottom) {
-                        return { x: startX + horizontalSpacing * (portNumber - (numPortsTop + 1)), y: switchPos.y + verticalOffset };
+                        return {
+                            x: startX + horizontalSpacing * (portNumber - numPortsTop - 1),
+                            y: switchPos.y + bottomOffset
+                        };
                     }
-                    return switchPos; // Fallback to center
+
+                    return switchPos; // fallback to center if invalid port
                 }
                 
                 const devicePositions = [
