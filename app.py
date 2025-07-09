@@ -29,6 +29,8 @@ From the given image, output ONLY a JSON object in this exact format:
 
 - Each node must have a unique "id". The "id" can be the name or label of the node.
 - Each node must have a "status" field, which can be one of three values: "healthy", "warning", or "critical".
+- **Crucially, one of the nodes MUST be a central 'Packet_Flow_Switch'. This switch should be connected to at least three other devices.**
+- **You must also include a node named 'InfiniStream'. This storage node must be connected *only* to the 'Packet_Flow_Switch' and nothing else.**
 - To make the output more realistic, please pick at least a third of the nodes randomly and assign them a "warning" or "critical" status. Assign all other nodes a "healthy" status.
 - Each link must indicate connection from "source" to "target".
 - Do not include any labels, explanations, or extra formatting. Return valid, minimal JSON only.

@@ -85,7 +85,7 @@
         .l3-content-wrapper { flex-grow: 1; display: flex; padding: 15px; gap: 15px; overflow: hidden; }
         .l3-main-panel { flex-grow: 1; display: flex; flex-direction: column; background: #161b22; border: 1px solid #30363d; border-radius: 6px; }
         .l3-main-panel-header { padding: 10px 15px; border-bottom: 1px solid #30363d; font-weight: 600; color: #f0f6fc; }
-        .l3-network-map { flex-grow: 1; position: relative; background: #0d1117; padding: 20px; display: flex; align-items: center; justify-content: center;}
+        .l3-network-map { flex-grow: 1; position: relative; background: #0d1117; padding: 5px; display: flex; align-items: center; justify-content: center;}
         
         .l3-right-panel {
             flex-basis: 320px; flex-shrink: 0; background: #161b22; border: 1px solid #30363d;
@@ -109,10 +109,12 @@
             align-items: center;
             color: #c9d1d9;
             cursor: grab;
-            transition: transform 0.2s ease; /* Smooth movement for dragging */
+            transition: transform 0.2s ease;
+            z-index: 10;
         }
         .nd-node:active { cursor: grabbing; }
-        
+        .nd-node.clickable { cursor: pointer; }
+
         .nd-icon {
             font-size: 24px;
             width: 40px;
@@ -125,8 +127,10 @@
         }
         .nd-icon.fa-server { font-size: 32px; }
         .nd-icon.fa-shield-alt { font-size: 32px; }
+        .nd-icon.fa-network-wired { font-size: 32px; } /* PFS icon */
         .nd-icon.fa-cloud { font-size: 36px; }
         .nd-icon.fa-database { font-size: 28px; }
+        .nd-icon.fa-hard-drive { font-size: 28px; } /* InfiniStream icon */
         .nd-label {
             font-size: 11px;
             margin-top: 4px;
@@ -198,7 +202,7 @@
             z-index: 2500;
             min-width: 280px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            pointer-events: none; /* Prevents radar from blocking mouse events on nodes */
+            pointer-events: none;
         }
         #l3-radar-window .radar-header { color: #f0f6fc; font-weight: 600; margin-bottom: 10px; text-align: center; border-bottom: 1px solid #30363d; padding-bottom: 8px; font-size: 13px; }
         #l3-radar-window .radar-section { margin-bottom: 8px; }
@@ -211,6 +215,86 @@
         #l3-radar-window .radar-pulse { animation: pulse 2s infinite; }
         #l3-radar-window .scanning-line { color: #238636; animation: blink 1.2s infinite; }
 
+        /* --- Level 4 Switch View --- */
+        #level4Overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 3000; color: #c9d1d9;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Courier New', monospace;
+        }
+        .l4-panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            width: 800px;
+            height: 550px;
+            display: flex;
+            flex-direction: column;
+        }
+        .l4-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 15px; margin-bottom: 15px;}
+        .l4-title { font-size: 18px; font-weight: 600; color: #f0f6fc;}
+        .l4-close-btn { background: #c9302c; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .l4-close-btn:hover { background: #d9534f; }
+        
+        .l4-content { flex-grow: 1; position: relative; }
+        .l4-switch-box {
+            position: absolute;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+            color: #8b949e;
+            font-size: 14px;
+            z-index: 10;
+        }
+        .l4-port-row {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+        .l4-port-socket {
+            width: 20px;
+            height: 20px;
+            background-color: #010409;
+            border: 1px solid #30363d;
+            position: relative;
+        }
+        .l4-port-socket::after {
+            content: attr(data-port);
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #8b949e;
+        }
+        .l4-connection-line-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .l4-line { 
+            stroke-width: 2; 
+            stroke: #30363d;
+        }
+        .l4-line.status-healthy { stroke: #58a6ff; }
+        .l4-line.status-warning { stroke: #f0ad4e; }
+        .l4-line.status-critical { stroke: #f85149; }
+        
     </style>
 </head>
 <body>
@@ -241,7 +325,6 @@
                 </div>
                 <div class="l3-network-map">
                     <svg width="100%" height="100%" id="l3-svg-container" style="position: absolute; top: 0; left: 0;"></svg>
-                    <!-- This container will be dynamically filled by JavaScript -->
                     <div id="l3-nodes-container" style="position: relative; width: 100%; height: 100%;"></div>
                 </div>
             </div>
@@ -257,6 +340,19 @@
             <div class="l3-chart-wrapper"><canvas id="l3-chart-errors"></canvas></div>
         </div>
         <div id="l3-radar-window"></div>
+    </div>
+
+    <!-- Level 4 Switch View Overlay -->
+    <div id="level4Overlay">
+        <div class="l4-panel">
+            <header class="l4-header">
+                <div id="l4-title" class="l4-title">Switch Port Analysis</div>
+                <button id="l4-close-btn" class="l4-close-btn">Return to Diagram</button>
+            </header>
+            <div id="l4-content" class="l4-content">
+                <!-- Diagram will be dynamically generated here -->
+            </div>
+        </div>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -279,13 +375,14 @@
         let mouseX = 0, mouseY = 0;
         let targetRotationX = 0, targetRotationY = 0;
         let rotationX = 0, rotationY = 0;
-        let currentLevel = 1; // 1: Global, 2: India Zoom, 3: Datacenter View
+        let currentLevel = 1; // 1: Global, 2: Regional, 3: Datacenter Diagram, 4: Switch View
         let targetCameraPosition = new THREE.Vector3().copy(initialCameraPosition);
         let currentLookAt = new THREE.Vector3(0, 0, 0);
         let targetLookAt = new THREE.Vector3(0, 0, 0);
         let activeCharts = []; // To hold Chart.js instances
         let animationState = 'idle'; // 'idle', 'centering', 'zooming'
         let zoomTargetMesh = null;
+        let currentGraphData = null; // To store L3 graph data for L4 view
 
 
         // --- Groups for objects ---
@@ -345,9 +442,10 @@
         document.addEventListener('wheel', onWheel, false);
         document.addEventListener('dblclick', resetView, false);
         document.getElementById('l3-close-btn').addEventListener('click', hideLevel3View);
-        
+        document.getElementById('l4-close-btn').addEventListener('click', hideLevel4View);
+
         // --- Core Event Handlers ---
-        function onMouseDown(event) { if (currentLevel === 3) return; mouseDown = true; mouseX = event.clientX; mouseY = event.clientY; }
+        function onMouseDown(event) { if (currentLevel >= 3) return; mouseDown = true; mouseX = event.clientX; mouseY = event.clientY; }
         function onMouseMove(event) {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             if (!mouseDown) { if (currentLevel === 1) checkHover(event); return; }
@@ -358,7 +456,7 @@
             mouseX = event.clientX; mouseY = event.clientY;
         }
         function onMouseUp(event) {
-            if (!mouseDown || currentLevel === 3) return; mouseDown = false;
+            if (!mouseDown || currentLevel >= 3) return; mouseDown = false;
             const deltaX = event.clientX - mouseX; const deltaY = event.clientY - mouseY;
             const dragDistance = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
             if (dragDistance < 5) handleClick();
@@ -382,7 +480,9 @@
         }
         function resetView() {
             if (currentLevel === 1 && camera.position.equals(initialCameraPosition)) return;
-            hideLevel3View(); currentLevel = 1; targetCameraPosition.copy(initialCameraPosition); targetLookAt.set(0, 0, 0);
+            hideLevel4View(); // Close L4 first
+            hideLevel3View(); // Then close L3
+            currentLevel = 1; targetCameraPosition.copy(initialCameraPosition); targetLookAt.set(0, 0, 0);
             globalConnectionsGroup.visible = true; indiaConnectionsGroup.visible = false;
             animationState = 'idle'; zoomTargetMesh = null; updateStatus('Global View. Monitoring all networks.');
         }
@@ -472,38 +572,28 @@
         async function showLevel3View(datacenterName) {
             currentLevel = 3;
             renderer.domElement.style.filter = 'blur(5px) brightness(0.7)';
-
+            
             const overlay = document.getElementById('level3Overlay');
-            const title = document.getElementById('l3-title');
-            const nodesContainer = document.getElementById('l3-nodes-container');
-            const svgContainer = document.getElementById('l3-svg-container');
-            const insightsContainer = document.getElementById('l3-ml-insights-content');
-
             overlay.style.display = 'flex';
             
-            nodesContainer.innerHTML = `<div class="diagram-status-message">Generating diagram from live data... <i class="fa-solid fa-spinner fa-spin"></i></div>`;
-            insightsContainer.innerHTML = '';
-            svgContainer.innerHTML = '';
+            document.getElementById('l3-nodes-container').innerHTML = `<div class="diagram-status-message">Generating diagram from live data... <i class="fa-solid fa-spinner fa-spin"></i></div>`;
+            document.getElementById('l3-ml-insights-content').innerHTML = '';
+            document.getElementById('l3-svg-container').innerHTML = '';
             if (activeCharts.length) { activeCharts.forEach(c => c.destroy()); activeCharts = []; }
             
-            title.textContent = `Network Flow Map (${datacenterName} Campus)`;
-            genericInsights.mlInsights.forEach(insight => {
-                const insightEl = document.createElement('div');
-                insightEl.className = 'l3-insight-item';
-                insightEl.innerHTML = `<div class="l3-insight-title">${insight.title}</div><div class="l3-insight-text">${insight.text}</div>`;
-                insightsContainer.appendChild(insightEl);
-            });
+            document.getElementById('l3-title').textContent = `Network Flow Map (${datacenterName} Campus)`;
 
             try {
                 const response = await fetch('/api/graph-data');
                 const graphData = await response.json();
                 if (!response.ok) { throw new Error(graphData.details || 'The server returned an error.'); }
-                // Add a check for the expected structure
                 if (!graphData.nodes || !graphData.links) { throw new Error('Received malformed graph data from the server.'); }
+                
+                currentGraphData = graphData; // Store data for L4
                 renderDynamicDiagram(graphData);
             } catch (error) {
                 console.error('Failed to load or render diagram:', error);
-                nodesContainer.innerHTML = `<div class="diagram-status-message">
+                document.getElementById('l3-nodes-container').innerHTML = `<div class="diagram-status-message">
                     <i class="fa-solid fa-triangle-exclamation" style="font-size: 24px; color: #f85149;"></i>
                     <p>Failed to Load Diagram</p>
                     <div class="error-details"><strong>Details:</strong> ${error.message}</div>
@@ -515,6 +605,8 @@
 
         function getIconForNode(id) {
             const lowerId = id.toLowerCase();
+            if (lowerId.includes('packet_flow_switch')) return 'fa-solid fa-network-wired';
+            if (lowerId.includes('infinistream')) return 'fa-solid fa-hard-drive';
             if (lowerId.includes('server')) return 'fa-solid fa-server';
             if (lowerId.includes('firewall')) return 'fa-solid fa-shield-alt';
             if (lowerId.includes('cloud') || lowerId.includes('internet')) return 'fa-solid fa-cloud';
@@ -550,68 +642,65 @@
                 .data(graph.nodes)
                 .enter()
                 .append("div")
-                .attr("class", d => `nd-node status-${d.status || 'healthy'}`)
+                .attr("class", d => {
+                    let classes = `nd-node status-${d.status || 'healthy'}`;
+                    if (d.id.includes('Packet_Flow_Switch')) {
+                        classes += ' clickable';
+                    }
+                    return classes;
+                })
                 .html(d => {
                     const iconClass = getIconForNode(d.id);
-                    // Add the icon class to the icon container div for CSS targeting
                     return `<div class="nd-icon ${iconClass}"><i class="${iconClass}"></i></div>
                             <div class="nd-label">${d.id.replace(/_/g, ' ')}</div>`; 
                 })
                 .on('mouseenter', (event, d) => showL3RadarWindow(event, d))
                 .on('mousemove', (event) => updateL3RadarPosition(event))
                 .on('mouseleave', () => hideL3RadarWindow())
-                .call(d3.drag() 
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended));
+                .on('click', (event, d) => { // Click handler for L4
+                    if (d.id.includes('Packet_Flow_Switch')) {
+                        showLevel4View();
+                    }
+                })
+                .call((selection) => {
+                    selection.each(function(d) {
+                        if (!d.id.includes('Packet_Flow_Switch')) {
+                            d3.select(this).call(
+                                d3.drag()
+                                .on("start", dragstarted)
+                                .on("drag", dragged)
+                                .on("end", dragended)
+                            );
+                        } else {
+                            this.style.cursor = 'pointer';
+                        }
+                    });
+                });
             
             const link = svg.append("g")
                 .selectAll("line")
                 .data(graph.links)
-                .enter()
-                .append("line")
-                .attr("class", "l3-connection-line");
+                .enter().append("line").attr("class", "l3-connection-line");
 
             simulation.on("tick", () => {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
-
-                node
-                    .style("left", d => `${d.x}px`)
-                    .style("top", d => `${d.y}px`)
-                    .style("transform", "translate(-50%, -50%)");
+                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y).attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                node.style("left", d => `${d.x}px`).style("top", d => `${d.y}px`).style("transform", "translate(-50%, -50%)");
             });
 
-            function dragstarted(event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-            }
-            function dragged(event, d) {
-                d.fx = event.x;
-                d.fy = event.y;
-            }
-            function dragended(event, d) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-            }
+            function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+            function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+            function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
         }
 
         function hideLevel3View() {
-            if(currentLevel !== 3) return;
-            const overlay = document.getElementById('level3Overlay');
-            overlay.style.display = 'none';
+            if(currentLevel < 3) return;
+            document.getElementById('level3Overlay').style.display = 'none';
             renderer.domElement.style.filter = 'none';
-            if (activeCharts.length) {
-                activeCharts.forEach(c => c.destroy());
-                activeCharts = [];
+            if (activeCharts.length) { activeCharts.forEach(c => c.destroy()); activeCharts = []; }
+            if (currentLevel === 3) {
+                 currentLevel = 2;
+                 updateStatus(`Zoomed into: India. Click a node for details.`);
             }
-            currentLevel = 2;
-            updateStatus(`Zoomed into: India. Click a node for details.`);
         }
 
         function createL3Charts() {
@@ -627,6 +716,157 @@
             activeCharts.push(new Chart('l3-chart-pie', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [20, 30, 48, 40, 25, 35], backgroundColor: '#5bc0de' }] }, options: commonOptions('Citrix Sessions') }));
             activeCharts.push(new Chart('l3-chart-errors', { type: 'bar', data: { labels: chartLabels, datasets: [{ data: [0, 0, 1, 0, 0, 0], backgroundColor: '#f85149' }] }, options: commonOptions('Firewall Blocks (count)') }));
         }
+
+        // --- Level 4 ---
+        function showLevel4View() {
+            if (!currentGraphData) return;
+            currentLevel = 4;
+
+            const overlay = document.getElementById('level4Overlay');
+            const content = document.getElementById('l4-content');
+            content.innerHTML = '';
+            overlay.style.display = 'flex';
+
+            setTimeout(() => {
+                const switchNode = currentGraphData.nodes.find(n => n.id.includes('Packet_Flow_Switch'));
+                if (!switchNode) {
+                    content.innerHTML = `<div class="diagram-status-message">Error: Packet Flow Switch not found in data.</div>`;
+                    return;
+                }
+
+                const contentRect = content.getBoundingClientRect();
+                const panelWidth = contentRect.width;
+                const panelHeight = contentRect.height;
+                const switchPos = { x: panelWidth / 2, y: panelHeight / 2 };
+
+                const connectedLinks = currentGraphData.links.filter(l =>
+                    (l.source && l.source.id === switchNode.id) ||
+                    (l.target && l.target.id === switchNode.id)
+                );
+                const connectedDevices = connectedLinks.map(link => {
+                    const deviceId = (link.source.id === switchNode.id) ? link.target.id : link.source.id;
+                    return currentGraphData.nodes.find(n => n.id === deviceId);
+                }).filter(Boolean);
+
+                let availablePorts = [1, 2, 3, 4, 5, 6, 7, 8];
+                for (let i = availablePorts.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [availablePorts[i], availablePorts[j]] = [availablePorts[j], availablePorts[i]];
+                }
+
+                const container = document.createElement('div');
+                container.style.position = 'relative';
+                container.style.width = '100%';
+                container.style.height = '100%';
+                
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.classList.add('l4-connection-line-svg');
+                // Set SVG to cover the entire container
+                svg.style.position = 'absolute';
+                svg.style.top = '0';
+                svg.style.left = '0';
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+                svg.style.pointerEvents = 'none';
+                svg.style.zIndex = '10'; // Higher z-index to appear above the switch
+
+                const switchWidth = 300;
+                const switchHeight = 120;
+                
+                function getPortPosition(portNumber) {
+                    const numPortsTop = 4;
+                    const numPortsBottom = 4;
+                    const totalWidthForPorts = 220; // A bit less than the switch width for padding
+                    const horizontalSpacing = totalWidthForPorts / (numPortsTop - 1);
+                    const verticalOffset = 35; // How far from the switch's vertical center the rows are
+                    const startX = switchPos.x - totalWidthForPorts / 2;
+
+                    if (portNumber >= 1 && portNumber <= numPortsTop) {
+                        return { x: startX + horizontalSpacing * (portNumber - 1), y: switchPos.y - verticalOffset };
+                    } else if (portNumber > numPortsTop && portNumber <= numPortsTop + numPortsBottom) {
+                        return { x: startX + horizontalSpacing * (portNumber - (numPortsTop + 1)), y: switchPos.y + verticalOffset };
+                    }
+                    return switchPos; // Fallback to center
+                }
+                
+                const devicePositions = [
+                    { x: switchPos.x - 250, y: 80 }, { x: switchPos.x, y: 80 }, { x: switchPos.x + 250, y: 80 },
+                    { x: switchPos.x - 250, y: panelHeight - 80 }, { x: switchPos.x, y: panelHeight - 80 }, { x: switchPos.x + 250, y: panelHeight - 80 },
+                    { x: 120, y: panelHeight / 2}, { x: panelWidth - 120, y: panelHeight / 2}
+                ];
+
+                const switchBox = document.createElement('div');
+                switchBox.className = 'l4-switch-box';
+                switchBox.style.width = `${switchWidth}px`;
+                switchBox.style.height = `${switchHeight}px`;
+                switchBox.style.left = `${switchPos.x - switchWidth / 2}px`;
+                switchBox.style.top = `${switchPos.y - switchHeight / 2}px`;
+                switchBox.style.position = 'absolute';
+                switchBox.style.zIndex = '5'; // Lower z-index so lines appear above
+                
+                let portsHTML = '<span>SWITCH</span><div class="l4-port-row">';
+                for (let i = 1; i <= 4; i++) portsHTML += `<div class="l4-port-socket" data-port="${i}"></div>`;
+                portsHTML += '</div><div class="l4-port-row">';
+                for (let i = 5; i <= 8; i++) portsHTML += `<div class="l4-port-socket" data-port="${i}"></div>`;
+                portsHTML += '</div>';
+                switchBox.innerHTML = portsHTML;
+                
+                // Add SVG first (bottom layer), then switch box
+                container.appendChild(svg);
+                container.appendChild(switchBox);
+
+                connectedDevices.forEach((device, index) => {
+                    if (index >= devicePositions.length || availablePorts.length === 0) return;
+
+                    const assignedPort = availablePorts.pop(); 
+                    const portPos = getPortPosition(assignedPort);
+                    const devicePos = devicePositions[index];
+
+                    const iconClass = getIconForNode(device.id);
+                    const nodeEl = document.createElement('div');
+                    nodeEl.className = `nd-node status-${device.status || 'healthy'}`;
+                    nodeEl.style.position = 'absolute';
+                    nodeEl.style.left = `${devicePos.x}px`;
+                    nodeEl.style.top = `${devicePos.y}px`;
+                    nodeEl.style.transform = 'translate(-50%, -50%)';
+                    nodeEl.style.zIndex = '15'; // Highest z-index for devices
+                    nodeEl.innerHTML = `<div class="nd-icon ${iconClass}"><i class="${iconClass}"></i></div><div class="nd-label">${device.id.replace(/_/g, ' ')}</div>`;
+                    container.appendChild(nodeEl);
+                    
+                    // Draw the connection line from the port center to the device center
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', portPos.x);
+                    line.setAttribute('y1', portPos.y);
+                    line.setAttribute('x2', devicePos.x);
+                    line.setAttribute('y2', devicePos.y);
+                    line.setAttribute('class', `l4-line status-${device.status || 'healthy'}`);
+                    line.setAttribute('stroke-width', '2');
+                    line.setAttribute('stroke', '#00ff00'); // Default green, override with CSS
+                    svg.appendChild(line);
+
+                    // Mark the port as active to show visual connection
+                    const portSocket = switchBox.querySelector(`[data-port="${assignedPort}"]`);
+                    if (portSocket) {
+                        portSocket.classList.add('active');
+                        portSocket.style.backgroundColor = '#00ff00'; // Green for active ports
+                    }
+                });
+
+                content.appendChild(container);
+                document.getElementById('l4-title').innerHTML = `<i class="fa-solid fa-network-wired"></i> ${switchNode.id.replace(/_/g, ' ')} - Connections`;
+            }, 50);
+        }
+
+
+
+        function hideLevel4View() {
+            if(currentLevel < 4) return;
+            document.getElementById('level4Overlay').style.display = 'none';
+            if(currentLevel === 4) {
+                currentLevel = 3;
+            }
+        }
+
 
         // --- Map Loading & Drawing Functions ---
         async function loadWorldMap() {
