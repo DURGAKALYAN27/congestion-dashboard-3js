@@ -739,69 +739,58 @@
                 const panelHeight = contentRect.height;
                 const switchPos = { x: panelWidth / 2, y: panelHeight / 2 };
 
-                const connectedLinks = currentGraphData.links.filter(l =>
-                    (l.source && l.source.id === switchNode.id) ||
-                    (l.target && l.target.id === switchNode.id)
-                );
-                const connectedDevices = connectedLinks.map(link => {
-                    const deviceId = (link.source.id === switchNode.id) ? link.target.id : link.source.id;
-                    return currentGraphData.nodes.find(n => n.id === deviceId);
-                }).filter(Boolean);
+                // Normalize source/target in links
+                const connectedLinks = currentGraphData.links.filter(link => {
+                    const src = typeof link.source === 'string' ? link.source : link.source.id;
+                    const tgt = typeof link.target === 'string' ? link.target : link.target.id;
+                    return src === switchNode.id || tgt === switchNode.id;
+                });
 
-                let availablePorts = [1, 2, 3, 4, 5, 6, 7, 8];
-                for (let i = availablePorts.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [availablePorts[i], availablePorts[j]] = [availablePorts[j], availablePorts[i]];
-                }
+                // Get unique device nodes connected to switch
+                const connectedDeviceIds = [...new Set(
+                    connectedLinks.map(link => {
+                        const src = typeof link.source === 'string' ? link.source : link.source.id;
+                        const tgt = typeof link.target === 'string' ? link.target : link.target.id;
+                        return src === switchNode.id ? tgt : src;
+                    })
+                )];
+
+                const connectedDevices = connectedDeviceIds
+                    .map(id => currentGraphData.nodes.find(n => n.id === id))
+                    .filter(Boolean)
+                    .slice(0, 8); // Only show up to 8 connections
 
                 const container = document.createElement('div');
                 container.style.position = 'relative';
                 container.style.width = '100%';
                 container.style.height = '100%';
-                
+
                 const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                 svg.classList.add('l4-connection-line-svg');
-                // Set SVG to cover the entire container
                 svg.style.position = 'absolute';
                 svg.style.top = '0';
                 svg.style.left = '0';
                 svg.style.width = '100%';
                 svg.style.height = '100%';
                 svg.style.pointerEvents = 'none';
-                svg.style.zIndex = '10'; // Higher z-index to appear above the switch
+                svg.style.zIndex = '10';
 
                 const switchWidth = 300;
                 const switchHeight = 120;
-                
+
                 function getPortPosition(portNumber) {
-                    const numPortsTop = 4;
-                    const numPortsBottom = 4;
-                    const totalWidthForPorts = 220; // A bit less than the switch width for padding
-                    const horizontalSpacing = totalWidthForPorts / (numPortsTop - 1);
-                    const topOffset = 0;       // <-- move top row slightly down
-                    const bottomOffset = 35;    // <-- keep bottom row as is
+                    const totalWidthForPorts = 220;
+                    const horizontalSpacing = totalWidthForPorts / 3;
                     const startX = switchPos.x - totalWidthForPorts / 2;
 
-                    if (portNumber >= 1 && portNumber <= numPortsTop) {
-                        return {
-                            x: startX + horizontalSpacing * (portNumber - 1),
-                            y: switchPos.y - topOffset
-                        };
-                    } else if (portNumber > numPortsTop && portNumber <= numPortsTop + numPortsBottom) {
-                        return {
-                            x: startX + horizontalSpacing * (portNumber - numPortsTop - 1),
-                            y: switchPos.y + bottomOffset
-                        };
+                    if (portNumber >= 1 && portNumber <= 4) {
+                        return { x: startX + horizontalSpacing * (portNumber - 1), y: switchPos.y };
+                    } else if (portNumber >= 5 && portNumber <= 8) {
+                        return { x: startX + horizontalSpacing * (portNumber - 5), y: switchPos.y + 35 };
                     }
 
-                    return switchPos; // fallback to center if invalid port
+                    return switchPos;
                 }
-                
-                const devicePositions = [
-                    { x: switchPos.x - 250, y: 80 }, { x: switchPos.x, y: 80 }, { x: switchPos.x + 250, y: 80 },
-                    { x: switchPos.x - 250, y: panelHeight - 80 }, { x: switchPos.x, y: panelHeight - 80 }, { x: switchPos.x + 250, y: panelHeight - 80 },
-                    { x: 120, y: panelHeight / 2}, { x: panelWidth - 120, y: panelHeight / 2}
-                ];
 
                 const switchBox = document.createElement('div');
                 switchBox.className = 'l4-switch-box';
@@ -810,25 +799,40 @@
                 switchBox.style.left = `${switchPos.x - switchWidth / 2}px`;
                 switchBox.style.top = `${switchPos.y - switchHeight / 2}px`;
                 switchBox.style.position = 'absolute';
-                switchBox.style.zIndex = '5'; // Lower z-index so lines appear above
-                
+                switchBox.style.zIndex = '5';
+
                 let portsHTML = '<span>SWITCH</span><div class="l4-port-row">';
                 for (let i = 1; i <= 4; i++) portsHTML += `<div class="l4-port-socket" data-port="${i}"></div>`;
                 portsHTML += '</div><div class="l4-port-row">';
                 for (let i = 5; i <= 8; i++) portsHTML += `<div class="l4-port-socket" data-port="${i}"></div>`;
                 portsHTML += '</div>';
                 switchBox.innerHTML = portsHTML;
-                
-                // Add SVG first (bottom layer), then switch box
+
                 container.appendChild(svg);
                 container.appendChild(switchBox);
 
-                connectedDevices.forEach((device, index) => {
-                    if (index >= devicePositions.length || availablePorts.length === 0) return;
+                const topPorts = [1, 2, 3, 4];
+                const bottomPorts = [5, 6, 7, 8];
 
-                    const assignedPort = availablePorts.pop(); 
-                    const portPos = getPortPosition(assignedPort);
-                    const devicePos = devicePositions[index];
+                const topDevices = connectedDevices.slice(0, 4);
+                const bottomDevices = connectedDevices.slice(4, 8);
+
+                const topDevicePositions = [
+                    { x: switchPos.x - 180, y: switchPos.y - 140 },
+                    { x: switchPos.x - 60,  y: switchPos.y - 140 },
+                    { x: switchPos.x + 60,  y: switchPos.y - 140 },
+                    { x: switchPos.x + 180, y: switchPos.y - 140 }
+                ];
+
+                const bottomDevicePositions = [
+                    { x: switchPos.x - 180, y: switchPos.y + 160 },
+                    { x: switchPos.x - 60,  y: switchPos.y + 160 },
+                    { x: switchPos.x + 60,  y: switchPos.y + 160 },
+                    { x: switchPos.x + 180, y: switchPos.y + 160 }
+                ];
+
+                function assignDeviceToPort(device, devicePos, portNumber) {
+                    const portPos = getPortPosition(portNumber);
 
                     const iconClass = getIconForNode(device.id);
                     const nodeEl = document.createElement('div');
@@ -837,11 +841,10 @@
                     nodeEl.style.left = `${devicePos.x}px`;
                     nodeEl.style.top = `${devicePos.y}px`;
                     nodeEl.style.transform = 'translate(-50%, -50%)';
-                    nodeEl.style.zIndex = '15'; // Highest z-index for devices
+                    nodeEl.style.zIndex = '15';
                     nodeEl.innerHTML = `<div class="nd-icon ${iconClass}"><i class="${iconClass}"></i></div><div class="nd-label">${device.id.replace(/_/g, ' ')}</div>`;
                     container.appendChild(nodeEl);
-                    
-                    // Draw the connection line from the port center to the device center
+
                     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                     line.setAttribute('x1', portPos.x);
                     line.setAttribute('y1', portPos.y);
@@ -849,21 +852,29 @@
                     line.setAttribute('y2', devicePos.y);
                     line.setAttribute('class', `l4-line status-${device.status || 'healthy'}`);
                     line.setAttribute('stroke-width', '2');
-                    line.setAttribute('stroke', '#00ff00'); // Default green, override with CSS
+                    line.setAttribute('stroke', '#00ff00');
                     svg.appendChild(line);
 
-                    // Mark the port as active to show visual connection
-                    const portSocket = switchBox.querySelector(`[data-port="${assignedPort}"]`);
+                    const portSocket = switchBox.querySelector(`[data-port="${portNumber}"]`);
                     if (portSocket) {
                         portSocket.classList.add('active');
                         portSocket.style.backgroundColor = '';
                     }
+                }
+
+                topDevices.forEach((device, i) => {
+                    assignDeviceToPort(device, topDevicePositions[i], topPorts[i]);
+                });
+                bottomDevices.forEach((device, i) => {
+                    assignDeviceToPort(device, bottomDevicePositions[i], bottomPorts[i]);
                 });
 
                 content.appendChild(container);
                 document.getElementById('l4-title').innerHTML = `<i class="fa-solid fa-network-wired"></i> ${switchNode.id.replace(/_/g, ' ')} - Connections`;
             }, 50);
         }
+
+
 
 
 
